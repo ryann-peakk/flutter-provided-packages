@@ -4,6 +4,8 @@
 
 package io.flutter.plugins.camerax;
 
+import android.hardware.camera2.CaptureRequest;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
 import androidx.camera.camera2.interop.Camera2CameraControl;
@@ -14,6 +16,9 @@ import androidx.core.content.ContextCompat;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import org.jetbrains.annotations.NotNull;
+
 import kotlin.Result;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
@@ -64,4 +69,39 @@ class Camera2CameraControlProxyApi extends PigeonApiCamera2CameraControl {
         },
         ContextCompat.getMainExecutor(getPigeonRegistrar().getContext()));
   }
+
+    @Override
+    public void setShutterSpeed(
+        @NotNull Camera2CameraControl pigeon_instance,
+        long speed,
+        @NotNull Function1<? super @NotNull Result<@NotNull Unit>,
+        @NotNull Unit> callback) {
+
+        android.util.Log.d("Camera2CameraControl", "Setting shutter speed to: " + speed + " nanoseconds");
+
+        CaptureRequestOptions options =
+                new CaptureRequestOptions.Builder()
+                        .setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
+                        .setCaptureRequestOption(
+                                CaptureRequest.SENSOR_EXPOSURE_TIME, speed)
+                        .build();
+
+        ListenableFuture<Void> future = pigeon_instance.addCaptureRequestOptions(options);
+        Futures.addCallback(
+                future,
+                new FutureCallback<>() {
+                    @Override
+                    public void onSuccess(Void voidResult) {
+                        android.util.Log.d("Camera2CameraControl", "Shutter speed set successfully!");
+                        ResultCompat.success(null, callback);
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Throwable t) {
+                        android.util.Log.e("Camera2CameraControl", "Failed to set shutter speed", t);
+                        ResultCompat.failure(t, callback);
+                    }
+                },
+                ContextCompat.getMainExecutor(getPigeonRegistrar().getContext()));
+    }
 }

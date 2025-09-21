@@ -910,6 +910,21 @@ class AndroidCameraCameraX extends CameraPlatform {
     }
   }
 
+  @override
+Future<void> setShutterSpeed(int cameraId, int speed) async {
+  try {
+    final Camera2CameraControl camera2Control = proxy.fromCamera2CameraControl(
+      cameraControl: cameraControl,
+    );
+    await camera2Control.setShutterSpeed(speed);
+  } on PlatformException catch (e) {
+    cameraErrorStreamController.add(
+      e.message ??
+          'Unable to set shutter speed due to unexpected error.',
+    );
+  }
+}
+
   /// The ui orientation changed.
   @override
   Stream<DeviceOrientationChangedEvent> onDeviceOrientationChanged() {

@@ -1159,6 +1159,12 @@ abstract class Camera2CameraControl {
   /// contains.
   @async
   void addCaptureRequestOptions(CaptureRequestOptions bundle);
+
+  /// Sets the shutter speed.
+  ///
+  /// The [speed] is in nanoseconds.
+  @async
+  void setShutterSpeed(int speed);
 }
 
 /// Applications can filter out unsuitable sizes and sort the resolution list in

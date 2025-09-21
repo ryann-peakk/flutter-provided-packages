@@ -701,6 +701,18 @@ class CameraController extends ValueNotifier<CameraValue> {
     }
   }
 
+  /// Sets the shutter speed for taking pictures.
+  ///
+  /// The [speed] is in nanoseconds.
+  Future<void> setShutterSpeed(int speed) async {
+    _throwIfNotInitialized('setShutterSpeed');
+    try {
+      await CameraPlatform.instance.setShutterSpeed(_cameraId, speed);
+    } on PlatformException catch (e) {
+      throw CameraException(e.code, e.message);
+    }
+  }
+
   /// Sets the flash mode for taking pictures.
   Future<void> setFlashMode(FlashMode mode) async {
     try {

@@ -442,6 +442,14 @@ class MethodChannelCamera extends CameraPlatform {
   }
 
   @override
+  Future<void> setShutterSpeed(int cameraId, int speed) {
+    return _channel.invokeMethod<void>('setShutterSpeed', <String, dynamic>{
+      'cameraId': cameraId,
+      'speed': speed,
+    });
+  }
+
+  @override
   Future<void> setFocusMode(int cameraId, FocusMode mode) =>
       _channel.invokeMethod<void>('setFocusMode', <String, dynamic>{
         'cameraId': cameraId,
