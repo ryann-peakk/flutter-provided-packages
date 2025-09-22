@@ -713,6 +713,18 @@ class CameraController extends ValueNotifier<CameraValue> {
     }
   }
 
+  /// Gets the supported shutter speed range for this camera.
+  ///
+  /// Returns a list with [min, max] values in nanoseconds.
+  Future<List<int>> getShutterSpeedRange() async {
+    _throwIfNotInitialized('getShutterSpeedRange');
+    try {
+      return await CameraPlatform.instance.getShutterSpeedRange(_cameraId);
+    } on PlatformException catch (e) {
+      throw CameraException(e.code, e.message);
+    }
+  }
+
   /// Sets the flash mode for taking pictures.
   Future<void> setFlashMode(FlashMode mode) async {
     try {

@@ -1235,6 +1235,11 @@ abstract class Camera2CameraInfo {
 
   /// Gets a camera characteristic value.
   Object? getCameraCharacteristic(CameraCharacteristicsKey key);
+
+  /// Gets the supported shutter speed range in nanoseconds.
+  ///
+  /// Returns a list with [min, max] values in nanoseconds.
+  List<int> getShutterSpeedRange();
 }
 
 /// A factory to create a MeteringPoint.

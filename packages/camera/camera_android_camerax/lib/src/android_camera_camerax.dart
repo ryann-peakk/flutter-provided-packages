@@ -925,6 +925,23 @@ Future<void> setShutterSpeed(int cameraId, int speed) async {
   }
 }
 
+@override
+Future<List<int>> getShutterSpeedRange(int cameraId) async {
+  try {
+    final Camera2CameraInfo camera2Info = proxy.fromCamera2CameraInfo(
+      cameraInfo: cameraInfo!,
+    );
+    return await camera2Info.getShutterSpeedRange();
+  } on PlatformException catch (e) {
+    cameraErrorStreamController.add(
+      e.message ??
+          'Unable to get shutter speed range due to unexpected error.',
+    );
+    // Return sensible defaults (1/4000s to 1/4s)
+    return <int>[250000, 250000000];
+  }
+}
+
   /// The ui orientation changed.
   @override
   Stream<DeviceOrientationChangedEvent> onDeviceOrientationChanged() {

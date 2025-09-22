@@ -288,6 +288,13 @@ abstract class CameraPlatform extends PlatformInterface {
     throw UnimplementedError('setShutterSpeed() is not implemented.');
   }
 
+  /// Gets the supported shutter speed range.
+  ///
+  /// Returns a list with [min, max] values in nanoseconds.
+  Future<List<int>> getShutterSpeedRange(int cameraId) {
+    throw UnimplementedError('getShutterSpeedRange() is not implemented.');
+  }
+
   /// Pause the active preview on the current frame for the selected camera.
   Future<void> pausePreview(int cameraId) {
     throw UnimplementedError('pausePreview() is not implemented.');

@@ -5980,6 +5980,13 @@ abstract class PigeonApiCamera2CameraInfo(open val pigeonRegistrar: CameraXLibra
   /** Gets a camera characteristic value. */
   abstract fun getCameraCharacteristic(pigeon_instance: androidx.camera.camera2.interop.Camera2CameraInfo, key: android.hardware.camera2.CameraCharacteristics.Key<*>): Any?
 
+  /**
+   * Gets the supported shutter speed range in nanoseconds.
+   *
+   * Returns a list with [min, max] values in nanoseconds.
+   */
+  abstract fun getShutterSpeedRange(pigeon_instance: androidx.camera.camera2.interop.Camera2CameraInfo): List<Long>
+
   companion object {
     @Suppress("LocalVariableName")
     fun setUpMessageHandlers(binaryMessenger: BinaryMessenger, api: PigeonApiCamera2CameraInfo?) {
@@ -6029,6 +6036,23 @@ abstract class PigeonApiCamera2CameraInfo(open val pigeonRegistrar: CameraXLibra
             val keyArg = args[1] as android.hardware.camera2.CameraCharacteristics.Key<*>
             val wrapped: List<Any?> = try {
               listOf(api.getCameraCharacteristic(pigeon_instanceArg, keyArg))
+            } catch (exception: Throwable) {
+              CameraXLibraryPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.camera_android_camerax.Camera2CameraInfo.getShutterSpeedRange", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val pigeon_instanceArg = args[0] as androidx.camera.camera2.interop.Camera2CameraInfo
+            val wrapped: List<Any?> = try {
+              listOf(api.getShutterSpeedRange(pigeon_instanceArg))
             } catch (exception: Throwable) {
               CameraXLibraryPigeonUtils.wrapError(exception)
             }
