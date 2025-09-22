@@ -713,6 +713,18 @@ class CameraController extends ValueNotifier<CameraValue> {
     }
   }
 
+  /// Gets the current actual shutter speed from the camera's capture results.
+  ///
+  /// Returns the exposure time in nanoseconds, or null if not available.
+  Future<int?> getShutterSpeed() async {
+    _throwIfNotInitialized('getShutterSpeed');
+    try {
+      return await CameraPlatform.instance.getShutterSpeed(_cameraId);
+    } on PlatformException catch (e) {
+      throw CameraException(e.code, e.message);
+    }
+  }
+
   /// Gets the supported shutter speed range for this camera.
   ///
   /// Returns a list with [min, max] values in nanoseconds.

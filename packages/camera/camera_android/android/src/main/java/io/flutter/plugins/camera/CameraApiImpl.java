@@ -243,6 +243,27 @@ final class CameraApiImpl implements Messages.CameraApi {
     return camera.getExposureOffsetStepSize();
   }
 
+  @Nullable
+  @Override
+  public Long getShutterSpeed() {
+    return camera.getShutterSpeed();
+  }
+
+  @Override
+  public void setShutterSpeed(@NonNull Long shutterSpeedNs, @NonNull Messages.VoidResult result) {
+    try {
+      camera.setShutterSpeed(shutterSpeedNs);
+      result.success();
+    } catch (Exception e) {
+      result.error(new Messages.FlutterError("CameraError", "Failed to set shutter speed: " + e.getMessage(), null));
+    }
+  }
+
+  @Override
+  public List<Long> getShutterSpeedRange() {
+    return camera.getShutterSpeedRange();
+  }
+
   @Override
   public void setExposureOffset(@NonNull Double offset, @NonNull Messages.Result<Double> result) {
     try {

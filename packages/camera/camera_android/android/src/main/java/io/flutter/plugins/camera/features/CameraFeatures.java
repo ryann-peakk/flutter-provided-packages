@@ -19,6 +19,7 @@ import io.flutter.plugins.camera.features.noisereduction.NoiseReductionFeature;
 import io.flutter.plugins.camera.features.resolution.ResolutionFeature;
 import io.flutter.plugins.camera.features.resolution.ResolutionPreset;
 import io.flutter.plugins.camera.features.sensororientation.SensorOrientationFeature;
+import io.flutter.plugins.camera.features.shutterspeed.ShutterSpeedFeature;
 import io.flutter.plugins.camera.features.zoomlevel.ZoomLevelFeature;
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,6 +42,7 @@ public class CameraFeatures {
   private static final String REGION_BOUNDARIES = "REGION_BOUNDARIES";
   private static final String RESOLUTION = "RESOLUTION";
   private static final String SENSOR_ORIENTATION = "SENSOR_ORIENTATION";
+  private static final String SHUTTER_SPEED = "SHUTTER_SPEED";
   private static final String ZOOM_LEVEL = "ZOOM_LEVEL";
 
   @NonNull
@@ -296,5 +298,24 @@ public class CameraFeatures {
    */
   public void setZoomLevel(@NonNull ZoomLevelFeature zoomLevel) {
     this.featureMap.put(ZOOM_LEVEL, zoomLevel);
+  }
+
+  /**
+   * Gets the shutter speed feature if it has been set.
+   *
+   * @return the shutter speed feature.
+   */
+  @NonNull
+  public ShutterSpeedFeature getShutterSpeed() {
+    return (ShutterSpeedFeature) Objects.requireNonNull(featureMap.get(SHUTTER_SPEED));
+  }
+
+  /**
+   * Sets the instance of the shutter speed feature.
+   *
+   * @param shutterSpeed the {@link ShutterSpeedFeature} instance to set.
+   */
+  public void setShutterSpeed(@NonNull ShutterSpeedFeature shutterSpeed) {
+    this.featureMap.put(SHUTTER_SPEED, shutterSpeed);
   }
 }

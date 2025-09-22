@@ -450,6 +450,13 @@ class MethodChannelCamera extends CameraPlatform {
   }
 
   @override
+  Future<int?> getShutterSpeed(int cameraId) {
+    return _channel.invokeMethod<int?>('getShutterSpeed', <String, dynamic>{
+      'cameraId': cameraId,
+    });
+  }
+
+  @override
   Future<List<int>> getShutterSpeedRange(int cameraId) async {
     final List<Object?>? result = await _channel.invokeListMethod<Object?>(
       'getShutterSpeedRange',

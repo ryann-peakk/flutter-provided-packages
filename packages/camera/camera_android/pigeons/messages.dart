@@ -197,6 +197,23 @@ abstract class CameraApi {
   @async
   void setZoomLevel(double zoom);
 
+  /// Gets the current actual shutter speed from the camera's capture results.
+  /// Returns the exposure time in nanoseconds, or null if not available.
+  int? getShutterSpeed();
+
+  /// Sets the shutter speed to a specific value in nanoseconds.
+  /// Pass a positive value for manual exposure, which automatically sets:
+  /// - CONTROL_AE_MODE to OFF (manual exposure)
+  /// - SENSOR_SENSITIVITY to 100 (ISO 100)
+  /// - CONTROL_AE_EXPOSURE_COMPENSATION to 0 (disabled)
+  /// The value will be clamped to the device's supported range.
+  @async
+  void setShutterSpeed(int shutterSpeedNs);
+
+  /// Gets the supported shutter speed range for this camera.
+  /// Returns a list with two elements: [minExposureTime, maxExposureTime] in nanoseconds.
+  List<int> getShutterSpeedRange();
+
   /// Pauses streaming of preview frames.
   void pausePreview();
 

@@ -240,6 +240,17 @@ public interface CameraProperties {
   int getSensorOrientation();
 
   /**
+   * Returns the range of supported exposure times for manual shutter speed control.
+   *
+   * <p>By default maps to the @see
+   * android.hardware.camera2.CameraCharacteristics#SENSOR_INFO_EXPOSURE_TIME_RANGE key.
+   *
+   * @return Range<Long> Range of supported exposure times in nanoseconds, or null if not supported.
+   */
+  @Nullable
+  Range<Long> getSensorInfoExposureTimeRange();
+
+  /**
    * Returns a level which generally classifies the overall set of the camera device functionality.
    *
    * <p><strong>Possible values:</strong>

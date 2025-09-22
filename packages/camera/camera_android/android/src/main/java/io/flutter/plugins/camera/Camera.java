@@ -56,6 +56,7 @@ import io.flutter.plugins.camera.features.fpsrange.FpsRangeFeature;
 import io.flutter.plugins.camera.features.resolution.ResolutionFeature;
 import io.flutter.plugins.camera.features.resolution.ResolutionPreset;
 import io.flutter.plugins.camera.features.sensororientation.DeviceOrientationManager;
+import io.flutter.plugins.camera.features.shutterspeed.ShutterSpeedFeature;
 import io.flutter.plugins.camera.features.zoomlevel.ZoomLevelFeature;
 import io.flutter.plugins.camera.media.ImageStreamReader;
 import io.flutter.plugins.camera.media.MediaRecorderBuilder;
@@ -230,6 +231,10 @@ class Camera
     captureTimeouts = new CaptureTimeoutsWrapper(3000, 3000);
     captureProps = new CameraCaptureProperties();
     cameraCaptureCallback = CameraCaptureCallback.create(this, captureTimeouts, captureProps);
+
+    // Initialize shutter speed feature now that captureProps is available
+    cameraFeatures.setShutterSpeed(
+        cameraFeatureFactory.createShutterSpeedFeature(cameraProperties, captureProps));
 
     startBackgroundThread();
   }
@@ -983,6 +988,36 @@ class Camera
     return cameraFeatures.getExposureOffset().getExposureOffsetStepSize();
   }
 
+  /** Return the current actual shutter speed from capture results to dart. */
+  public Long getShutterSpeed() {
+    return cameraFeatures.getShutterSpeed().getShutterSpeed();
+  }
+
+  /** Set the shutter speed to a specific value in nanoseconds. */
+  public void setShutterSpeed(@NonNull Long shutterSpeedNs) {
+    final ShutterSpeedFeature shutterSpeedFeature = cameraFeatures.getShutterSpeed();
+    shutterSpeedFeature.setShutterSpeed(shutterSpeedNs);
+    shutterSpeedFeature.updateBuilder(previewRequestBuilder);
+    
+    // Update the capture session with the new settings
+    refreshPreviewCaptureSession(
+        () -> {}, // Success callback - nothing to do
+        (code, message) -> {} // Error callback - could add logging here
+    );
+  }
+
+  /** Return the supported shutter speed range for this camera. */
+  public List<Long> getShutterSpeedRange() {
+    final ShutterSpeedFeature shutterSpeedFeature = cameraFeatures.getShutterSpeed();
+    Range<Long> range = shutterSpeedFeature.getShutterSpeedRange();
+    if (range != null) {
+      return Arrays.asList(range.getLower(), range.getUpper());
+    } else {
+      // Return empty list if range is not available
+      return Arrays.asList();
+    }
+  }
+
   /**
    * Sets new focus mode from dart.
    *
@@ -1397,6 +1432,9 @@ class Camera
             activity,
             dartMessenger,
             videoCaptureSettings.resolutionPreset);
+    // Initialize shutter speed feature now that captureProps is available
+    cameraFeatures.setShutterSpeed(
+        cameraFeatureFactory.createShutterSpeedFeature(cameraProperties, captureProps));
     cameraFeatures.setAutoFocus(
         cameraFeatureFactory.createAutoFocusFeature(cameraProperties, true));
     setFpsCameraFeatureForRecording(cameraProperties);

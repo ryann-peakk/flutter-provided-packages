@@ -19,7 +19,9 @@ import io.flutter.plugins.camera.features.noisereduction.NoiseReductionFeature;
 import io.flutter.plugins.camera.features.resolution.ResolutionFeature;
 import io.flutter.plugins.camera.features.resolution.ResolutionPreset;
 import io.flutter.plugins.camera.features.sensororientation.SensorOrientationFeature;
+import io.flutter.plugins.camera.features.shutterspeed.ShutterSpeedFeature;
 import io.flutter.plugins.camera.features.zoomlevel.ZoomLevelFeature;
+import io.flutter.plugins.camera.types.CameraCaptureProperties;
 
 /**
  * Implementation of the {@link CameraFeatureFactory} interface creating the supported feature
@@ -104,5 +106,12 @@ public class CameraFeatureFactoryImpl implements CameraFeatureFactory {
   public NoiseReductionFeature createNoiseReductionFeature(
       @NonNull CameraProperties cameraProperties) {
     return new NoiseReductionFeature(cameraProperties);
+  }
+
+  @NonNull
+  @Override
+  public ShutterSpeedFeature createShutterSpeedFeature(
+      @NonNull CameraProperties cameraProperties, @NonNull CameraCaptureProperties captureProperties) {
+    return new ShutterSpeedFeature(cameraProperties, captureProperties);
   }
 }

@@ -288,6 +288,13 @@ abstract class CameraPlatform extends PlatformInterface {
     throw UnimplementedError('setShutterSpeed() is not implemented.');
   }
 
+  /// Gets the current actual shutter speed from the camera's capture results.
+  ///
+  /// Returns the exposure time in nanoseconds, or null if not available.
+  Future<int?> getShutterSpeed(int cameraId) {
+    throw UnimplementedError('getShutterSpeed() is not implemented.');
+  }
+
   /// Gets the supported shutter speed range.
   ///
   /// Returns a list with [min, max] values in nanoseconds.
