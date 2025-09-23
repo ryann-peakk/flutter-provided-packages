@@ -364,6 +364,29 @@ class AndroidCamera extends CameraPlatform {
   }
 
   @override
+  Future<int?> getShutterSpeed(int cameraId) async {
+    return _hostApi.getShutterSpeed();
+  }
+
+  @override
+  Future<void> setShutterSpeed(int cameraId, int speed) async {
+    try {
+      await _hostApi.setShutterSpeed(speed);
+    } on PlatformException catch (e) {
+      throw CameraException(e.code, e.message);
+    }
+  }
+
+  @override
+  Future<List<int>> getShutterSpeedRange(int cameraId) async {
+    try {
+      return await _hostApi.getShutterSpeedRange();
+    } on PlatformException catch (e) {
+      throw CameraException(e.code, e.message);
+    }
+  }
+
+  @override
   Future<void> pausePreview(int cameraId) async {
     await _hostApi.pausePreview();
   }
