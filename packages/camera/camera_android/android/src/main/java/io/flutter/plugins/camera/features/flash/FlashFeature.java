@@ -53,12 +53,20 @@ public class FlashFeature extends CameraFeature<FlashMode> {
       return;
     }
 
-    switch (currentSetting) {
-      case off:
-        requestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
-        requestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
-        break;
+    Integer currentAeMode = requestBuilder.get(CaptureRequest.CONTROL_AE_MODE);
+    if (currentAeMode != null && currentAeMode == CaptureRequest.CONTROL_AE_MODE_OFF) {
+      // Manual exposure is active; avoid re-enabling auto exposure via flash.
+      requestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
+      return;
+    }
 
+    // If manual exposure is active, leave AE untouched; manual pipeline handles exposure.
+    if (currentSetting == FlashMode.off) {
+      requestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
+      return;
+    }
+
+    switch (currentSetting) {
       case always:
         requestBuilder.set(
             CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);

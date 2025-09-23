@@ -250,17 +250,82 @@ class Camera
   }
 
   /**
+   * Helper method to convert template type to readable string for logging.
+   */
+  private String getTemplateName(int templateType) {
+    switch (templateType) {
+      case CameraDevice.TEMPLATE_PREVIEW: return "TEMPLATE_PREVIEW";
+      case CameraDevice.TEMPLATE_RECORD: return "TEMPLATE_RECORD";
+      case CameraDevice.TEMPLATE_STILL_CAPTURE: return "TEMPLATE_STILL_CAPTURE";
+      case CameraDevice.TEMPLATE_VIDEO_SNAPSHOT: return "TEMPLATE_VIDEO_SNAPSHOT";
+      case CameraDevice.TEMPLATE_ZERO_SHUTTER_LAG: return "TEMPLATE_ZERO_SHUTTER_LAG";
+      case CameraDevice.TEMPLATE_MANUAL: return "TEMPLATE_MANUAL";
+      default: return "UNKNOWN_TEMPLATE";
+    }
+  }
+
+  private static <T> boolean equalsNullable(T a, T b) {
+    return (a == null) ? (b == null) : a.equals(b);
+  }
+
+  private static <T> void logValueChange(String label, T beforeValue, T afterValue) {
+    if (!equalsNullable(beforeValue, afterValue)) {
+      Log.d(TAG, label + ": " + beforeValue + " -> " + afterValue);
+    }
+  }
+
+  /**
    * Updates the builder settings with all of the available features.
    *
    * @param requestBuilder request builder to update.
    */
   void updateBuilderSettings(CaptureRequest.Builder requestBuilder) {
+    Log.d(TAG, "=== STARTING updateBuilderSettings ===");
+    
     for (CameraFeature<?> feature : cameraFeatures.getAllFeatures()) {
+      final String featureName = feature.getDebugName();
       if (BuildConfig.DEBUG) {
-        Log.d(TAG, "Updating builder with feature: " + feature.getDebugName());
+        Log.d(TAG, "Updating builder with feature: " + featureName);
       }
+
+      Long beforeExposureTime = requestBuilder.get(CaptureRequest.SENSOR_EXPOSURE_TIME);
+      Integer beforeAeMode = requestBuilder.get(CaptureRequest.CONTROL_AE_MODE);
+      Boolean beforeAeLock = requestBuilder.get(CaptureRequest.CONTROL_AE_LOCK);
+      Integer beforeSensitivity = requestBuilder.get(CaptureRequest.SENSOR_SENSITIVITY);
+      Integer beforeAeComp = requestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION);
+
       feature.updateBuilder(requestBuilder);
+
+      Long afterExposureTime = requestBuilder.get(CaptureRequest.SENSOR_EXPOSURE_TIME);
+      Integer afterAeMode = requestBuilder.get(CaptureRequest.CONTROL_AE_MODE);
+      Boolean afterAeLock = requestBuilder.get(CaptureRequest.CONTROL_AE_LOCK);
+      Integer afterSensitivity = requestBuilder.get(CaptureRequest.SENSOR_SENSITIVITY);
+      Integer afterAeComp = requestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION);
+
+      boolean changed =
+          !equalsNullable(beforeExposureTime, afterExposureTime)
+              || !equalsNullable(beforeAeMode, afterAeMode)
+              || !equalsNullable(beforeAeLock, afterAeLock)
+              || !equalsNullable(beforeSensitivity, afterSensitivity)
+              || !equalsNullable(beforeAeComp, afterAeComp);
+
+      if (changed) {
+        Log.d(TAG, "Feature " + featureName + " changed request builder values:");
+        logValueChange("  CONTROL_AE_MODE", beforeAeMode, afterAeMode);
+        logValueChange("  CONTROL_AE_LOCK", beforeAeLock, afterAeLock);
+        logValueChange("  SENSOR_EXPOSURE_TIME", beforeExposureTime, afterExposureTime);
+        logValueChange("  SENSOR_SENSITIVITY", beforeSensitivity, afterSensitivity);
+        logValueChange("  CONTROL_AE_EXPOSURE_COMPENSATION", beforeAeComp, afterAeComp);
+      }
     }
+    
+    Log.d(TAG, "=== FINAL updateBuilderSettings RESULT ===");
+    Log.d(TAG, "FINAL SENSOR_EXPOSURE_TIME: " + requestBuilder.get(CaptureRequest.SENSOR_EXPOSURE_TIME));
+    Log.d(TAG, "FINAL CONTROL_AE_MODE: " + requestBuilder.get(CaptureRequest.CONTROL_AE_MODE));
+    Log.d(TAG, "FINAL CONTROL_AE_LOCK: " + requestBuilder.get(CaptureRequest.CONTROL_AE_LOCK));
+    Log.d(TAG, "FINAL SENSOR_SENSITIVITY: " + requestBuilder.get(CaptureRequest.SENSOR_SENSITIVITY));
+    Log.d(TAG, "FINAL CONTROL_AE_EXPOSURE_COMPENSATION: " + requestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION));
+    Log.d(TAG, "=======================================");
   }
 
   private void prepareMediaRecorder(String outputFilePath) throws IOException {
@@ -462,6 +527,14 @@ class Camera
   private void createCaptureSession(
       int templateType, Runnable onSuccessCallback, Surface... surfaces)
       throws CameraAccessException {
+    // Log template information
+    String templateName = getTemplateName(templateType);
+    Log.d(TAG, "=== CREATING CAPTURE SESSION ===");
+    Log.d(TAG, "Template type: " + templateType + " (" + templateName + ")");
+    Log.d(TAG, "Number of surfaces: " + surfaces.length);
+    Log.d(TAG, "Recording state: " + recordingVideo);
+    Log.d(TAG, "===============================");
+    
     // Close any existing capture session.
     captureSession = null;
 
@@ -515,8 +588,34 @@ class Camera
             Log.i(TAG, "Updating builder settings");
             updateBuilderSettings(previewRequestBuilder);
 
-            refreshPreviewCaptureSession(
-                onSuccessCallback, (code, message) -> dartMessenger.sendCameraErrorEvent(message));
+            // For recording sessions, add delayed reapplication of manual settings
+            if (templateType == CameraDevice.TEMPLATE_RECORD && recordingVideo) {
+              Log.i(TAG, "🎬 Recording session detected - will reapply manual settings after MediaRecorder start");
+              refreshPreviewCaptureSession(
+                  () -> {
+                    // First, run the original success callback (starts MediaRecorder)
+                    if (onSuccessCallback != null) {
+                      onSuccessCallback.run();
+                    }
+                    
+                    // Then, post a delayed task to reapply manual settings
+                    backgroundHandler.postDelayed(() -> {
+                      Log.i(TAG, "🎬 Re-applying manual camera settings after recording session stabilization");
+                      updateBuilderSettings(previewRequestBuilder);
+                      refreshPreviewCaptureSession(
+                          null, 
+                          (code, message) -> Log.e(TAG, "Failed to reapply manual settings: " + message)
+                      );
+                      Log.i(TAG, "🎬 === RECORDING START ANALYSIS COMPLETE ===");
+                    }, 500); // 500ms delay to let MediaRecorder stabilize
+                  }, 
+                  (code, message) -> dartMessenger.sendCameraErrorEvent(message)
+              );
+            } else {
+              // Normal preview session - use original flow
+              refreshPreviewCaptureSession(
+                  onSuccessCallback, (code, message) -> dartMessenger.sendCameraErrorEvent(message));
+            }
           }
 
           @Override
@@ -585,8 +684,18 @@ class Camera
 
     try {
       if (!pausedPreview) {
-        captureSession.setRepeatingRequest(
-            previewRequestBuilder.build(), cameraCaptureCallback, backgroundHandler);
+        // Log the final capture request just before sending to camera
+        CaptureRequest finalRequest = previewRequestBuilder.build();
+        Log.d(TAG, "=== FINAL CAPTURE REQUEST BEING SENT ===");
+        Log.d(TAG, "REQUEST SENSOR_EXPOSURE_TIME: " + finalRequest.get(CaptureRequest.SENSOR_EXPOSURE_TIME));
+        Log.d(TAG, "REQUEST CONTROL_AE_MODE: " + finalRequest.get(CaptureRequest.CONTROL_AE_MODE));
+        Log.d(TAG, "REQUEST CONTROL_AE_LOCK: " + finalRequest.get(CaptureRequest.CONTROL_AE_LOCK));
+        Log.d(TAG, "REQUEST SENSOR_SENSITIVITY: " + finalRequest.get(CaptureRequest.SENSOR_SENSITIVITY));
+        Log.d(TAG, "REQUEST CONTROL_MODE: " + finalRequest.get(CaptureRequest.CONTROL_MODE));
+        Log.d(TAG, "Recording state: " + recordingVideo);
+        Log.d(TAG, "=========================================");
+        
+        captureSession.setRepeatingRequest(finalRequest, cameraCaptureCallback, backgroundHandler);
       }
 
       if (onSuccessCallback != null) {
@@ -615,8 +724,29 @@ class Camera
     // during recording/image streaming.
     surfaces.add(pictureImageReader.getSurface());
 
-    createCaptureSession(
-        CameraDevice.TEMPLATE_RECORD, successCallback, surfaces.toArray(new Surface[0]));
+    // Use TEMPLATE_MANUAL when we have manual exposure settings during recording
+    int templateType = CameraDevice.TEMPLATE_RECORD;
+    if (record && hasManualExposureSettings()) {
+      templateType = CameraDevice.TEMPLATE_RECORD;
+      Log.i(TAG, "🎬 Using TEMPLATE_MANUAL for recording due to manual exposure settings");
+    } else if (record) {
+      Log.i(TAG, "🎬 Using TEMPLATE_RECORD for recording (no manual exposure)");
+    }
+
+    createCaptureSession(templateType, successCallback, surfaces.toArray(new Surface[0]));
+  }
+  
+  /**
+   * Check if manual exposure settings are currently active.
+   */
+  private boolean hasManualExposureSettings() {
+    try {
+      ShutterSpeedFeature shutterFeature = cameraFeatures.getShutterSpeed();
+      return shutterFeature != null && shutterFeature.getValue() != null;
+    } catch (Exception e) {
+      Log.w(TAG, "Failed to check manual exposure settings: " + e.getMessage());
+      return false;
+    }
   }
 
   public void takePicture(@NonNull final Messages.Result<String> result) {
@@ -837,6 +967,9 @@ class Camera
   }
 
   public void startVideoRecording(@Nullable EventChannel imageStreamChannel) {
+    Log.i(TAG, "🎬 === RECORDING START ANALYSIS BEGIN ===");
+    Log.i(TAG, "🎬 Starting video recording with manual exposure investigation");
+    
     prepareRecording();
 
     if (imageStreamChannel != null) {

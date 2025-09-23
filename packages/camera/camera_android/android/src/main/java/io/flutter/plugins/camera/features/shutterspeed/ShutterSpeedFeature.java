@@ -25,9 +25,10 @@ import io.flutter.plugins.camera.types.CameraCaptureProperties;
 public class ShutterSpeedFeature extends CameraFeature<Long> {
   private static final String TAG = "ShutterSpeedFeature";
   private static final int MANUAL_ISO_VALUE = 100; // ISO 100 for clean, predictable results
-  
+
   private Long currentSetting;
   private final CameraCaptureProperties captureProperties;
+  private Integer latchedIsoValue;
 
   public ShutterSpeedFeature(@NonNull CameraProperties cameraProperties, @NonNull CameraCaptureProperties captureProperties) {
     super(cameraProperties);
@@ -70,12 +71,22 @@ public class ShutterSpeedFeature extends CameraFeature<Long> {
     if (shutterSpeedNs == null || shutterSpeedNs == 0) {
       Log.d(TAG, "Setting shutter speed to AUTO mode");
       this.currentSetting = null;
+      this.latchedIsoValue = null;
     } else {
       Long clampedValue = clampToSupportedRange(shutterSpeedNs);
       Log.d(TAG, String.format("Setting shutter speed: requested=%d ns (%.3f ms), clamped=%d ns (%.3f ms)", 
           shutterSpeedNs, shutterSpeedNs / 1_000_000.0,
           clampedValue, clampedValue / 1_000_000.0));
       this.currentSetting = clampedValue;
+
+      Integer latestIso = captureProperties.getLastSensorSensitivity();
+      if (latestIso != null) {
+        this.latchedIsoValue = latestIso;
+        Log.d(TAG, String.format("Latched ISO for manual exposure: %d", latestIso));
+      } else {
+        this.latchedIsoValue = MANUAL_ISO_VALUE;
+        Log.w(TAG, String.format("No recent ISO available; defaulting manual ISO to %d", MANUAL_ISO_VALUE));
+      }
     }
   }
 
@@ -96,19 +107,34 @@ public class ShutterSpeedFeature extends CameraFeature<Long> {
     if (currentSetting == null) {
       // Auto exposure mode - let camera handle exposure automatically
       Log.d(TAG, "Applying AUTO exposure mode (AE_MODE_ON)");
+      requestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
       requestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+      requestBuilder.set(CaptureRequest.CONTROL_AE_LOCK, false);
       // Remove any manual settings to allow auto exposure to work
       requestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, null);
       requestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, null);
       requestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, null);
     } else {
-      // Manual exposure mode
+      // Manual exposure mode - be more aggressive about enforcing it
+      int isoToApply = latchedIsoValue != null ? latchedIsoValue : MANUAL_ISO_VALUE;
       Log.d(TAG, String.format("Applying MANUAL exposure mode: shutter=%d ns (%.3f ms), ISO=%d", 
-          currentSetting, currentSetting / 1_000_000.0, MANUAL_ISO_VALUE));
+          currentSetting, currentSetting / 1_000_000.0, isoToApply));
+      
+      // Force manual control mode and lock auto-exposure
+      requestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
       requestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+      requestBuilder.set(CaptureRequest.CONTROL_AE_LOCK, true); // Lock AE to prevent interference
+      
+      // Apply manual exposure settings
       requestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, currentSetting);
-      requestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, MANUAL_ISO_VALUE);
+      requestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, isoToApply);
       requestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 0); // Disable EV compensation
+      
+      // Additional controls for video recording compatibility
+      requestBuilder.set(CaptureRequest.CONTROL_AWB_LOCK, false); // Allow auto white balance
+      requestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+      
+      Log.d(TAG, "Manual exposure settings applied with AE lock enabled");
     }
   }
 

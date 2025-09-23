@@ -25,6 +25,15 @@ class CameraCaptureCallback extends CaptureCallback {
   private CameraState cameraState;
   private final CaptureTimeoutsWrapper captureTimeouts;
   private final CameraCaptureProperties captureProps;
+  
+  // Throttling for diagnostic logging
+  private long lastDiagnosticLogTime = 0;
+  private long lastMismatchLogTime = 0;
+  private static final long DIAGNOSTIC_LOG_INTERVAL_MS = 30000; // Log every 30 seconds max
+  private static final long MISMATCH_LOG_INTERVAL_MS = 10000; // Log mismatches every 10 seconds max
+  private Long lastLoggedExposure = null;
+  private Integer lastLoggedAeMode = null;
+  private Boolean lastLoggedAeLock = null;
 
   // Lookup keys for state; overrideable for unit tests since Mockito can't mock them.
   @VisibleForTesting @NonNull
@@ -174,6 +183,64 @@ class CameraCaptureCallback extends CaptureCallback {
       @NonNull CameraCaptureSession session,
       @NonNull CaptureRequest request,
       @NonNull TotalCaptureResult result) {
+    
+    // Log detailed comparison between requested and actual camera settings
+    Long requestedExposure = request.get(CaptureRequest.SENSOR_EXPOSURE_TIME);
+    Long actualExposure = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+    Integer requestedAeMode = request.get(CaptureRequest.CONTROL_AE_MODE);
+    Integer actualAeMode = result.get(CaptureResult.CONTROL_AE_MODE);
+    Boolean requestedAeLock = request.get(CaptureRequest.CONTROL_AE_LOCK);
+    Boolean actualAeLock = result.get(CaptureResult.CONTROL_AE_LOCK);
+    Integer requestedSensitivity = request.get(CaptureRequest.SENSOR_SENSITIVITY);
+    Integer actualSensitivity = result.get(CaptureResult.SENSOR_SENSITIVITY);
+    
+    // Only log when we have manual exposure settings and throttle to avoid spam
+    if (requestedExposure != null && requestedExposure > 0) {
+      long currentTime = System.currentTimeMillis();
+      boolean hasValueChanged = !requestedExposure.equals(lastLoggedExposure) 
+                             || !requestedAeMode.equals(lastLoggedAeMode)
+                             || !requestedAeLock.equals(lastLoggedAeLock);
+      boolean shouldLogDiagnostic = hasValueChanged 
+                                 || (currentTime - lastDiagnosticLogTime) > DIAGNOSTIC_LOG_INTERVAL_MS;
+      
+      // Check for mismatches but throttle them too
+      boolean hasMismatch = !requestedExposure.equals(actualExposure)
+                         || !requestedAeMode.equals(actualAeMode) 
+                         || !requestedAeLock.equals(actualAeLock);
+      boolean shouldLogMismatch = hasMismatch && (currentTime - lastMismatchLogTime) > MISMATCH_LOG_INTERVAL_MS;
+      
+      if (shouldLogDiagnostic || shouldLogMismatch) {
+        Log.d(TAG, "=== CAPTURE RESULT COMPARISON ===");
+        Log.d(TAG, "EXPOSURE_TIME - Requested: " + requestedExposure + " ns, Actual: " + actualExposure + " ns");
+        Log.d(TAG, "AE_MODE - Requested: " + requestedAeMode + ", Actual: " + actualAeMode);
+        Log.d(TAG, "AE_LOCK - Requested: " + requestedAeLock + ", Actual: " + actualAeLock);
+        Log.d(TAG, "SENSITIVITY - Requested: " + requestedSensitivity + ", Actual: " + actualSensitivity);
+        
+        // Check for mismatches
+        if (!requestedExposure.equals(actualExposure)) {
+          Log.w(TAG, "⚠️  EXPOSURE MISMATCH! Camera ignored our setting!");
+        }
+        if (!requestedAeMode.equals(actualAeMode)) {
+          Log.w(TAG, "⚠️  AE_MODE MISMATCH! Camera ignored our AE mode!");
+        }
+        if (!requestedAeLock.equals(actualAeLock)) {
+          Log.w(TAG, "⚠️  AE_LOCK MISMATCH! Camera ignored our AE lock!");
+        }
+        Log.d(TAG, "================================");
+        
+        // Update throttling state
+        if (shouldLogDiagnostic) {
+          lastDiagnosticLogTime = currentTime;
+          lastLoggedExposure = requestedExposure;
+          lastLoggedAeMode = requestedAeMode;
+          lastLoggedAeLock = requestedAeLock;
+        }
+        if (shouldLogMismatch) {
+          lastMismatchLogTime = currentTime;
+        }
+      }
+    }
+    
     process(result);
   }
 
