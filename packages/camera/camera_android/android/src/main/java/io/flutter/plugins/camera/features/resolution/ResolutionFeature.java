@@ -10,6 +10,7 @@ import android.hardware.camera2.CaptureRequest;
 import android.media.CamcorderProfile;
 import android.media.EncoderProfiles;
 import android.os.Build;
+import android.util.Log;
 import android.util.Size;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -27,6 +28,7 @@ import java.util.List;
  * required to configure the resolution using the {@link android.hardware.camera2} API.
  */
 public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
+  private static final String TAG = "ResolutionFeature";
   @Nullable private Size captureSize;
   @Nullable private Size previewSize;
   private CamcorderProfile recordingProfileLegacy;
@@ -282,6 +284,18 @@ public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
       if (defaultVideoProfile != null) {
         captureSizeCalculated = true;
         captureSize = new Size(defaultVideoProfile.getWidth(), defaultVideoProfile.getHeight());
+        Log.i(
+            TAG,
+            "Using EncoderProfiles for preset "
+                + resolutionPreset
+                + ": width="
+                + defaultVideoProfile.getWidth()
+                + ", height="
+                + defaultVideoProfile.getHeight()
+                + ", frameRate="
+                + defaultVideoProfile.getFrameRate()
+                + ", bitrate="
+                + defaultVideoProfile.getBitrate());
       }
     }
 
@@ -292,8 +306,30 @@ public class ResolutionFeature extends CameraFeature<ResolutionPreset> {
       recordingProfileLegacy = camcorderProfile;
       captureSize =
           new Size(recordingProfileLegacy.videoFrameWidth, recordingProfileLegacy.videoFrameHeight);
+      Log.i(
+          TAG,
+          "Using CamcorderProfile for preset "
+              + resolutionPreset
+              + ": width="
+              + recordingProfileLegacy.videoFrameWidth
+              + ", height="
+              + recordingProfileLegacy.videoFrameHeight
+              + ", frameRate="
+              + recordingProfileLegacy.videoFrameRate
+              + ", bitrate="
+              + recordingProfileLegacy.videoBitRate);
     }
 
     previewSize = computeBestPreviewSize(cameraId, resolutionPreset);
+    if (previewSize != null) {
+      Log.i(
+          TAG,
+          "Preview size for preset "
+              + resolutionPreset
+              + ": width="
+              + previewSize.getWidth()
+              + ", height="
+              + previewSize.getHeight());
+    }
   }
 }
