@@ -294,6 +294,10 @@ class Camera
       Integer beforeSensitivity = requestBuilder.get(CaptureRequest.SENSOR_SENSITIVITY);
       Integer beforeAeComp = requestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION);
       Integer beforeAfMode = requestBuilder.get(CaptureRequest.CONTROL_AF_MODE);
+      Integer beforeVideoStab =
+          requestBuilder.get(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE);
+      Integer beforeNoiseReduction = requestBuilder.get(CaptureRequest.NOISE_REDUCTION_MODE);
+      Integer beforeEdgeMode = requestBuilder.get(CaptureRequest.EDGE_MODE);
 
       feature.updateBuilder(requestBuilder);
 
@@ -303,6 +307,10 @@ class Camera
       Integer afterSensitivity = requestBuilder.get(CaptureRequest.SENSOR_SENSITIVITY);
       Integer afterAeComp = requestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION);
       Integer afterAfMode = requestBuilder.get(CaptureRequest.CONTROL_AF_MODE);
+      Integer afterVideoStab =
+          requestBuilder.get(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE);
+      Integer afterNoiseReduction = requestBuilder.get(CaptureRequest.NOISE_REDUCTION_MODE);
+      Integer afterEdgeMode = requestBuilder.get(CaptureRequest.EDGE_MODE);
 
       boolean changed =
           !equalsNullable(beforeExposureTime, afterExposureTime)
@@ -310,7 +318,10 @@ class Camera
               || !equalsNullable(beforeAeLock, afterAeLock)
               || !equalsNullable(beforeSensitivity, afterSensitivity)
               || !equalsNullable(beforeAeComp, afterAeComp)
-              || !equalsNullable(beforeAfMode, afterAfMode);
+              || !equalsNullable(beforeAfMode, afterAfMode)
+              || !equalsNullable(beforeVideoStab, afterVideoStab)
+              || !equalsNullable(beforeNoiseReduction, afterNoiseReduction)
+              || !equalsNullable(beforeEdgeMode, afterEdgeMode);
 
       if (changed) {
         Log.d(TAG, "Feature " + featureName + " changed request builder values:");
@@ -321,6 +332,10 @@ class Camera
         logValueChange(
             "  CONTROL_AE_EXPOSURE_COMPENSATION", beforeAeComp, afterAeComp);
         logValueChange("  CONTROL_AF_MODE", beforeAfMode, afterAfMode);
+        logValueChange(
+            "  CONTROL_VIDEO_STABILIZATION_MODE", beforeVideoStab, afterVideoStab);
+        logValueChange("  NOISE_REDUCTION_MODE", beforeNoiseReduction, afterNoiseReduction);
+        logValueChange("  EDGE_MODE", beforeEdgeMode, afterEdgeMode);
       }
     }
     
@@ -331,6 +346,14 @@ class Camera
     Log.d(TAG, "FINAL SENSOR_SENSITIVITY: " + requestBuilder.get(CaptureRequest.SENSOR_SENSITIVITY));
     Log.d(TAG, "FINAL CONTROL_AE_EXPOSURE_COMPENSATION: " + requestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION));
     Log.d(TAG, "FINAL CONTROL_AF_MODE: " + requestBuilder.get(CaptureRequest.CONTROL_AF_MODE));
+    Log.d(
+        TAG,
+        "FINAL CONTROL_VIDEO_STABILIZATION_MODE: "
+            + requestBuilder.get(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE));
+    Log.d(
+        TAG,
+        "FINAL NOISE_REDUCTION_MODE: " + requestBuilder.get(CaptureRequest.NOISE_REDUCTION_MODE));
+    Log.d(TAG, "FINAL EDGE_MODE: " + requestBuilder.get(CaptureRequest.EDGE_MODE));
     Log.d(TAG, "=======================================");
   }
 
@@ -358,6 +381,23 @@ class Camera
                   videoCaptureSettings.fps,
                   videoCaptureSettings.videoBitrate,
                   videoCaptureSettings.audioBitrate));
+
+      EncoderProfiles.VideoProfile defaultVideoProfile =
+          getRecordingProfile().getVideoProfiles().isEmpty()
+              ? null
+              : getRecordingProfile().getVideoProfiles().get(0);
+      if (defaultVideoProfile != null) {
+        Log.i(
+            TAG,
+            "MediaRecorder using EncoderProfiles: width="
+                + defaultVideoProfile.getWidth()
+                + ", height="
+                + defaultVideoProfile.getHeight()
+                + ", frameRate="
+                + defaultVideoProfile.getFrameRate()
+                + ", bitrate="
+                + defaultVideoProfile.getBitrate());
+      }
     } else {
       mediaRecorderBuilder =
           new MediaRecorderBuilder(
@@ -367,6 +407,19 @@ class Camera
                   videoCaptureSettings.fps,
                   videoCaptureSettings.videoBitrate,
                   videoCaptureSettings.audioBitrate));
+      CamcorderProfile legacyProfile = getRecordingProfileLegacy();
+      if (legacyProfile != null) {
+        Log.i(
+            TAG,
+            "MediaRecorder using CamcorderProfile: width="
+                + legacyProfile.videoFrameWidth
+                + ", height="
+                + legacyProfile.videoFrameHeight
+                + ", frameRate="
+                + legacyProfile.videoFrameRate
+                + ", bitrate="
+                + legacyProfile.videoBitRate);
+      }
     }
 
     mediaRecorder =
@@ -377,6 +430,17 @@ class Camera
                     ? getDeviceOrientationManager().getVideoOrientation()
                     : getDeviceOrientationManager().getVideoOrientation(lockedOrientation))
             .build();
+
+    Log.i(
+        TAG,
+        "Requested MediaRecorder overrides: fps="
+            + videoCaptureSettings.fps
+            + ", videoBitrate="
+            + videoCaptureSettings.videoBitrate
+            + ", audioBitrate="
+            + videoCaptureSettings.audioBitrate
+            + ", enableAudio="
+            + videoCaptureSettings.enableAudio);
   }
 
   /**
