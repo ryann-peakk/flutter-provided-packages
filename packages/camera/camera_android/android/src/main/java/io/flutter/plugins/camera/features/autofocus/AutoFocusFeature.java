@@ -7,12 +7,14 @@ package io.flutter.plugins.camera.features.autofocus;
 import android.annotation.SuppressLint;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CaptureRequest;
+import android.util.Log;
 import androidx.annotation.NonNull;
 import io.flutter.plugins.camera.CameraProperties;
 import io.flutter.plugins.camera.features.CameraFeature;
 
 /** Controls the auto focus configuration on the {@see anddroid.hardware.camera2} API. */
 public class AutoFocusFeature extends CameraFeature<FocusMode> {
+  private static final String TAG = "AutoFocusFeature";
   @NonNull private FocusMode currentSetting = FocusMode.auto;
 
   // When switching recording modes this feature is re-created with the appropriate setting here.
@@ -65,8 +67,15 @@ public class AutoFocusFeature extends CameraFeature<FocusMode> {
   @Override
   public void updateBuilder(@NonNull CaptureRequest.Builder requestBuilder) {
     if (!checkIsSupported()) {
+      Log.i(TAG, "Auto focus unsupported for this camera; leaving CONTROL_AF_MODE untouched.");
       return;
     }
+
+    Log.i(
+        TAG,
+        "Applying focus mode "
+            + currentSetting
+            + (recordingVideo ? " (recording session)" : " (preview session)"));
 
     switch (currentSetting) {
       case locked:

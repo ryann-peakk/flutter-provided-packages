@@ -293,6 +293,7 @@ class Camera
       Boolean beforeAeLock = requestBuilder.get(CaptureRequest.CONTROL_AE_LOCK);
       Integer beforeSensitivity = requestBuilder.get(CaptureRequest.SENSOR_SENSITIVITY);
       Integer beforeAeComp = requestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION);
+      Integer beforeAfMode = requestBuilder.get(CaptureRequest.CONTROL_AF_MODE);
 
       feature.updateBuilder(requestBuilder);
 
@@ -301,13 +302,15 @@ class Camera
       Boolean afterAeLock = requestBuilder.get(CaptureRequest.CONTROL_AE_LOCK);
       Integer afterSensitivity = requestBuilder.get(CaptureRequest.SENSOR_SENSITIVITY);
       Integer afterAeComp = requestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION);
+      Integer afterAfMode = requestBuilder.get(CaptureRequest.CONTROL_AF_MODE);
 
       boolean changed =
           !equalsNullable(beforeExposureTime, afterExposureTime)
               || !equalsNullable(beforeAeMode, afterAeMode)
               || !equalsNullable(beforeAeLock, afterAeLock)
               || !equalsNullable(beforeSensitivity, afterSensitivity)
-              || !equalsNullable(beforeAeComp, afterAeComp);
+              || !equalsNullable(beforeAeComp, afterAeComp)
+              || !equalsNullable(beforeAfMode, afterAfMode);
 
       if (changed) {
         Log.d(TAG, "Feature " + featureName + " changed request builder values:");
@@ -315,7 +318,9 @@ class Camera
         logValueChange("  CONTROL_AE_LOCK", beforeAeLock, afterAeLock);
         logValueChange("  SENSOR_EXPOSURE_TIME", beforeExposureTime, afterExposureTime);
         logValueChange("  SENSOR_SENSITIVITY", beforeSensitivity, afterSensitivity);
-        logValueChange("  CONTROL_AE_EXPOSURE_COMPENSATION", beforeAeComp, afterAeComp);
+        logValueChange(
+            "  CONTROL_AE_EXPOSURE_COMPENSATION", beforeAeComp, afterAeComp);
+        logValueChange("  CONTROL_AF_MODE", beforeAfMode, afterAfMode);
       }
     }
     
@@ -325,6 +330,7 @@ class Camera
     Log.d(TAG, "FINAL CONTROL_AE_LOCK: " + requestBuilder.get(CaptureRequest.CONTROL_AE_LOCK));
     Log.d(TAG, "FINAL SENSOR_SENSITIVITY: " + requestBuilder.get(CaptureRequest.SENSOR_SENSITIVITY));
     Log.d(TAG, "FINAL CONTROL_AE_EXPOSURE_COMPENSATION: " + requestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION));
+    Log.d(TAG, "FINAL CONTROL_AF_MODE: " + requestBuilder.get(CaptureRequest.CONTROL_AF_MODE));
     Log.d(TAG, "=======================================");
   }
 
