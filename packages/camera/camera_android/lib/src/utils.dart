@@ -110,7 +110,60 @@ PlatformMediaSettings mediaSettingsToPlatform(MediaSettings? settings) =>
       videoBitrate: settings?.videoBitrate,
       audioBitrate: settings?.audioBitrate,
       fps: settings?.fps,
+      videoCodec: codecToWire(settings?.videoCodec),
     );
+
+MediaSettings mediaSettingsFromPlatform(PlatformMediaSettings settings) => MediaSettings(
+      resolutionPreset: resolutionPresetFromPlatform(settings.resolutionPreset),
+      enableAudio: settings.enableAudio,
+      fps: settings.fps,
+      videoBitrate: settings.videoBitrate,
+      audioBitrate: settings.audioBitrate,
+      videoCodec: codecFromWire(settings.videoCodec),
+    );
+
+int? codecToWire(VideoCodec? codec) {
+  switch (codec) {
+    case VideoCodec.platformDefault:
+      return kVideoCodecDefaultWireValue;
+    case VideoCodec.hevc:
+      return kVideoCodecHevcWireValue;
+    case null:
+      return null;
+  }
+}
+
+VideoCodec? codecFromWire(int? value) {
+  switch (value) {
+    case kVideoCodecDefaultWireValue:
+      return VideoCodec.platformDefault;
+    case kVideoCodecHevcWireValue:
+      return VideoCodec.hevc;
+    case null:
+      return null;
+    default:
+      return null;
+  }
+}
+
+ResolutionPreset? resolutionPresetFromPlatform(PlatformResolutionPreset? preset) {
+  switch (preset) {
+    case PlatformResolutionPreset.low:
+      return ResolutionPreset.low;
+    case PlatformResolutionPreset.medium:
+      return ResolutionPreset.medium;
+    case PlatformResolutionPreset.high:
+      return ResolutionPreset.high;
+    case PlatformResolutionPreset.veryHigh:
+      return ResolutionPreset.veryHigh;
+    case PlatformResolutionPreset.ultraHigh:
+      return ResolutionPreset.ultraHigh;
+    case PlatformResolutionPreset.max:
+      return ResolutionPreset.max;
+    case null:
+      return null;
+  }
+}
 
 /// Converts an [ImageFormatGroup] to [PlatformImageFormatGroup].
 ///

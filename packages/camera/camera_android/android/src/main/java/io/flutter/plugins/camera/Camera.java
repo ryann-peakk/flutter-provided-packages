@@ -182,22 +182,25 @@ class Camera
     @Nullable public final Integer fps;
     @Nullable public final Integer videoBitrate;
     @Nullable public final Integer audioBitrate;
+    @Nullable public final Integer videoCodec;
 
     public VideoCaptureSettings(
         @NonNull ResolutionPreset resolutionPreset,
         boolean enableAudio,
         @Nullable Integer fps,
         @Nullable Integer videoBitrate,
-        @Nullable Integer audioBitrate) {
+        @Nullable Integer audioBitrate,
+        @Nullable Integer videoCodec) {
       this.resolutionPreset = resolutionPreset;
       this.enableAudio = enableAudio;
       this.fps = fps;
       this.videoBitrate = videoBitrate;
       this.audioBitrate = audioBitrate;
+      this.videoCodec = videoCodec;
     }
 
     public VideoCaptureSettings(@NonNull ResolutionPreset resolutionPreset, boolean enableAudio) {
-      this(resolutionPreset, enableAudio, null, null, null);
+      this(resolutionPreset, enableAudio, null, null, null, null);
     }
   }
 
@@ -351,7 +354,8 @@ class Camera
                   outputFilePath,
                   videoCaptureSettings.fps,
                   videoCaptureSettings.videoBitrate,
-                  videoCaptureSettings.audioBitrate));
+                  videoCaptureSettings.audioBitrate,
+                  videoCaptureSettings.videoCodec));
     } else {
       mediaRecorderBuilder =
           new MediaRecorderBuilder(
@@ -360,7 +364,8 @@ class Camera
                   outputFilePath,
                   videoCaptureSettings.fps,
                   videoCaptureSettings.videoBitrate,
-                  videoCaptureSettings.audioBitrate));
+                  videoCaptureSettings.audioBitrate,
+                  videoCaptureSettings.videoCodec));
     }
 
     mediaRecorder =

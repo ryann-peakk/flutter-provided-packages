@@ -45,6 +45,8 @@ void main() {
             fps: 15,
             videoBitrate: 200000,
             audioBitrate: 32000,
+            videoCodec: VideoCodec.platformDefault,
+            enableAudio: true,
           ),
         );
 
@@ -58,7 +60,8 @@ void main() {
               'fps': 15,
               'videoBitrate': 200000,
               'audioBitrate': 32000,
-              'enableAudio': false,
+              'videoCodec': kVideoCodecDefaultWireValue,
+              'enableAudio': true,
             },
           ),
         ]);
@@ -220,6 +223,7 @@ void main() {
             fps: 15,
             videoBitrate: 200000,
             audioBitrate: 32000,
+            videoCodec: VideoCodec.hevc,
             enableAudio: true,
           ),
         );
@@ -276,6 +280,7 @@ void main() {
             fps: 15,
             videoBitrate: 200000,
             audioBitrate: 32000,
+            videoCodec: VideoCodec.hevc,
             enableAudio: true,
           ),
         );
@@ -329,6 +334,7 @@ void main() {
             fps: 15,
             videoBitrate: 200000,
             audioBitrate: 32000,
+            videoCodec: VideoCodec.hevc,
             enableAudio: true,
           ),
         );
@@ -536,6 +542,7 @@ void main() {
             fps: 15,
             videoBitrate: 200000,
             audioBitrate: 32000,
+            videoCodec: VideoCodec.hevc,
             enableAudio: true,
           ),
         );

@@ -115,6 +115,7 @@ class MethodChannelCamera extends CameraPlatform {
             'fps': mediaSettings.fps,
             'videoBitrate': mediaSettings.videoBitrate,
             'audioBitrate': mediaSettings.audioBitrate,
+            'videoCodec': codecToWire(mediaSettings.videoCodec),
             'enableAudio': mediaSettings.enableAudio,
           });
 

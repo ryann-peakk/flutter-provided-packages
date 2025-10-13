@@ -216,6 +216,7 @@ class PlatformMediaSettings {
     this.fps,
     this.videoBitrate,
     this.audioBitrate,
+    this.videoCodec,
     required this.enableAudio,
   });
 
@@ -227,6 +228,8 @@ class PlatformMediaSettings {
 
   int? audioBitrate;
 
+  int? videoCodec;
+
   bool enableAudio;
 
   Object encode() {
@@ -235,6 +238,7 @@ class PlatformMediaSettings {
       fps,
       videoBitrate,
       audioBitrate,
+      videoCodec,
       enableAudio,
     ];
   }
@@ -246,7 +250,8 @@ class PlatformMediaSettings {
       fps: result[1] as int?,
       videoBitrate: result[2] as int?,
       audioBitrate: result[3] as int?,
-      enableAudio: result[4]! as bool,
+      videoCodec: result[4] as int?,
+      enableAudio: result[5]! as bool,
     );
   }
 }

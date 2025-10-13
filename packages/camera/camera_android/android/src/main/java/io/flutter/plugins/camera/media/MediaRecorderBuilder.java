@@ -24,10 +24,11 @@ public class MediaRecorderBuilder {
     @NonNull public final String outputFilePath;
     @Nullable public final Integer fps;
     @Nullable public final Integer videoBitrate;
+    @Nullable public final Integer videoCodec;
     @Nullable public final Integer audioBitrate;
 
     public RecordingParameters(@NonNull String outputFilePath) {
-      this(outputFilePath, null, null, null);
+      this(outputFilePath, null, null, null, null);
     }
 
     public RecordingParameters(
@@ -35,10 +36,20 @@ public class MediaRecorderBuilder {
         @Nullable Integer fps,
         @Nullable Integer videoBitrate,
         @Nullable Integer audioBitrate) {
+      this(outputFilePath, fps, videoBitrate, audioBitrate, null);
+    }
+
+    public RecordingParameters(
+        @NonNull String outputFilePath,
+        @Nullable Integer fps,
+        @Nullable Integer videoBitrate,
+        @Nullable Integer audioBitrate,
+        @Nullable Integer videoCodec) {
       this.outputFilePath = outputFilePath;
       this.fps = fps;
       this.videoBitrate = videoBitrate;
       this.audioBitrate = audioBitrate;
+      this.videoCodec = videoCodec;
     }
   }
 
@@ -117,7 +128,8 @@ public class MediaRecorderBuilder {
         mediaRecorder.setAudioSamplingRate(audioProfile.getSampleRate());
       }
 
-      mediaRecorder.setVideoEncoder(videoProfile.getCodec());
+      setVideoEncoderWithFallback(
+          mediaRecorder, parameters.videoCodec, videoProfile.getCodec());
 
       int videoBitrate =
           (parameters.videoBitrate != null && parameters.videoBitrate.intValue() > 0)
@@ -144,7 +156,8 @@ public class MediaRecorderBuilder {
                 : camcorderProfile.audioBitRate);
         mediaRecorder.setAudioSamplingRate(camcorderProfile.audioSampleRate);
       }
-      mediaRecorder.setVideoEncoder(camcorderProfile.videoCodec);
+      setVideoEncoderWithFallback(
+          mediaRecorder, parameters.videoCodec, camcorderProfile.videoCodec);
       mediaRecorder.setVideoEncodingBitRate(
           (parameters.videoBitrate != null && parameters.videoBitrate.intValue() > 0)
               ? parameters.videoBitrate
@@ -163,5 +176,19 @@ public class MediaRecorderBuilder {
     mediaRecorder.prepare();
 
     return mediaRecorder;
+  }
+
+  private void setVideoEncoderWithFallback(
+      MediaRecorder mediaRecorder, @Nullable Integer requestedCodec, int fallbackCodec) {
+    if (requestedCodec == null) {
+      mediaRecorder.setVideoEncoder(fallbackCodec);
+      return;
+    }
+
+    try {
+      mediaRecorder.setVideoEncoder(requestedCodec.intValue());
+    } catch (RuntimeException exception) {
+      mediaRecorder.setVideoEncoder(fallbackCodec);
+    }
   }
 }

@@ -35,10 +35,13 @@ import io.flutter.view.TextureRegistry;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.LooperMode;
 
+@LooperMode(LooperMode.Mode.PAUSED)
 @RunWith(RobolectricTestRunner.class)
 public class CameraTest_getRecordingProfileTest {
 
@@ -72,7 +75,7 @@ public class CameraTest_getRecordingProfileTest {
             mockCameraFeatureFactory,
             mockDartMessenger,
             mockCameraProperties,
-            new Camera.VideoCaptureSettings(resolutionPreset, enableAudio));
+            new Camera.VideoCaptureSettings(resolutionPreset, enableAudio, null, null, null, null));
   }
 
   @Config(maxSdk = 30)

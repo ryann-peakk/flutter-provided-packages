@@ -77,22 +77,6 @@ class PlatformPoint {
 /// Pigeon equivalent of [ResolutionPreset].
 enum PlatformResolutionPreset { low, medium, high, veryHigh, ultraHigh, max }
 
-/// Pigeon equivalent of [MediaSettings].
-class PlatformMediaSettings {
-  PlatformMediaSettings({
-    required this.resolutionPreset,
-    required this.enableAudio,
-    this.fps,
-    this.videoBitrate,
-    this.audioBitrate,
-  });
-  final PlatformResolutionPreset resolutionPreset;
-  final int? fps;
-  final int? videoBitrate;
-  final int? audioBitrate;
-  final bool enableAudio;
-}
-
 /// Pigeon equivalent of [ImageFormatGroup].
 enum PlatformImageFormatGroup {
   /// The default for Android.
@@ -103,6 +87,24 @@ enum PlatformImageFormatGroup {
 
 /// Pigeon equivalent of [FlashMode].
 enum PlatformFlashMode { off, auto, always, torch }
+
+/// Pigeon equivalent of [MediaSettings].
+class PlatformMediaSettings {
+  PlatformMediaSettings({
+    required this.resolutionPreset,
+    required this.enableAudio,
+    this.fps,
+    this.videoBitrate,
+    this.audioBitrate,
+    this.videoCodec,
+  });
+  final PlatformResolutionPreset resolutionPreset;
+  final int? fps;
+  final int? videoBitrate;
+  final int? audioBitrate;
+  final int? videoCodec;
+  final bool enableAudio;
+}
 
 /// Handles calls from Dart to the native side.
 @HostApi()

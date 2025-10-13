@@ -687,6 +687,16 @@ public class Messages {
       this.audioBitrate = setterArg;
     }
 
+    private @Nullable Long videoCodec;
+
+    public @Nullable Long getVideoCodec() {
+      return videoCodec;
+    }
+
+    public void setVideoCodec(@Nullable Long setterArg) {
+      this.videoCodec = setterArg;
+    }
+
     private @NonNull Boolean enableAudio;
 
     public @NonNull Boolean getEnableAudio() {
@@ -708,12 +718,12 @@ public class Messages {
       if (this == o) { return true; }
       if (o == null || getClass() != o.getClass()) { return false; }
       PlatformMediaSettings that = (PlatformMediaSettings) o;
-      return resolutionPreset.equals(that.resolutionPreset) && Objects.equals(fps, that.fps) && Objects.equals(videoBitrate, that.videoBitrate) && Objects.equals(audioBitrate, that.audioBitrate) && enableAudio.equals(that.enableAudio);
+      return resolutionPreset.equals(that.resolutionPreset) && Objects.equals(fps, that.fps) && Objects.equals(videoBitrate, that.videoBitrate) && Objects.equals(audioBitrate, that.audioBitrate) && Objects.equals(videoCodec, that.videoCodec) && enableAudio.equals(that.enableAudio);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(resolutionPreset, fps, videoBitrate, audioBitrate, enableAudio);
+      return Objects.hash(resolutionPreset, fps, videoBitrate, audioBitrate, videoCodec, enableAudio);
     }
 
     public static final class Builder {
@@ -750,6 +760,14 @@ public class Messages {
         return this;
       }
 
+      private @Nullable Long videoCodec;
+
+      @CanIgnoreReturnValue
+      public @NonNull Builder setVideoCodec(@Nullable Long setterArg) {
+        this.videoCodec = setterArg;
+        return this;
+      }
+
       private @Nullable Boolean enableAudio;
 
       @CanIgnoreReturnValue
@@ -764,6 +782,7 @@ public class Messages {
         pigeonReturn.setFps(fps);
         pigeonReturn.setVideoBitrate(videoBitrate);
         pigeonReturn.setAudioBitrate(audioBitrate);
+        pigeonReturn.setVideoCodec(videoCodec);
         pigeonReturn.setEnableAudio(enableAudio);
         return pigeonReturn;
       }
@@ -771,11 +790,12 @@ public class Messages {
 
     @NonNull
     ArrayList<Object> toList() {
-      ArrayList<Object> toListResult = new ArrayList<>(5);
+      ArrayList<Object> toListResult = new ArrayList<>(6);
       toListResult.add(resolutionPreset);
       toListResult.add(fps);
       toListResult.add(videoBitrate);
       toListResult.add(audioBitrate);
+      toListResult.add(videoCodec);
       toListResult.add(enableAudio);
       return toListResult;
     }
@@ -790,7 +810,9 @@ public class Messages {
       pigeonResult.setVideoBitrate((Long) videoBitrate);
       Object audioBitrate = pigeonVar_list.get(3);
       pigeonResult.setAudioBitrate((Long) audioBitrate);
-      Object enableAudio = pigeonVar_list.get(4);
+      Object videoCodec = pigeonVar_list.get(4);
+      pigeonResult.setVideoCodec((Long) videoCodec);
+      Object enableAudio = pigeonVar_list.get(5);
       pigeonResult.setEnableAudio((Boolean) enableAudio);
       return pigeonResult;
     }

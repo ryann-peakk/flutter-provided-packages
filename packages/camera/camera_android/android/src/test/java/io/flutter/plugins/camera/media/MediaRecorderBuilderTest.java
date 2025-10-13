@@ -261,6 +261,83 @@ public class MediaRecorderBuilderTest {
     inOrder.verify(recorder).prepare();
   }
 
+  @Config(maxSdk = 30)
+  @SuppressWarnings("deprecation")
+  @Test
+  public void build_shouldFallbackToProfileCodecWhenRequestedCodecFailsLegacy() throws IOException {
+    CamcorderProfile recorderProfile = getEmptyCamcorderProfile();
+    MediaRecorderBuilder.MediaRecorderFactory mockFactory =
+        mock(MediaRecorderBuilder.MediaRecorderFactory.class);
+    MediaRecorder mockMediaRecorder = mock(MediaRecorder.class);
+    doThrow(new RuntimeException())
+        .when(mockMediaRecorder)
+        .setVideoEncoder(MediaRecorder.VideoEncoder.HEVC);
+
+    String outputFilePath = "mock_video_file_path";
+    MediaRecorderBuilder builder =
+        new MediaRecorderBuilder(
+                recorderProfile,
+                mockFactory,
+                new MediaRecorderBuilder.RecordingParameters(
+                    outputFilePath, testFps, testVideoBitrate, testAudioBitrate, 5))
+            .setEnableAudio(true)
+            .setMediaOrientation(0);
+
+    when(mockFactory.makeMediaRecorder()).thenReturn(mockMediaRecorder);
+
+    MediaRecorder recorder = builder.build();
+
+    InOrder inOrder = inOrder(recorder);
+    inOrder.verify(recorder).setAudioSource(MediaRecorder.AudioSource.MIC);
+    inOrder.verify(recorder).setVideoSource(MediaRecorder.VideoSource.SURFACE);
+    inOrder.verify(recorder).setOutputFormat(recorderProfile.fileFormat);
+    inOrder.verify(recorder).setAudioEncoder(recorderProfile.audioCodec);
+    inOrder.verify(recorder).setAudioEncodingBitRate(testAudioBitrate);
+    inOrder.verify(recorder).setAudioSamplingRate(recorderProfile.audioSampleRate);
+    inOrder.verify(recorder).setVideoEncoder(recorderProfile.videoCodec);
+  }
+
+  @Config(minSdk = 31)
+  @Test
+  public void build_shouldFallbackToProfileCodecWhenRequestedCodecFails() throws IOException {
+    EncoderProfiles recorderProfile = mock(EncoderProfiles.class);
+    EncoderProfiles.VideoProfile videoProfile = getEmptyEncoderProfilesVideoProfile();
+    EncoderProfiles.AudioProfile audioProfile = getEmptyEncoderProfilesAudioProfile();
+
+    MediaRecorderBuilder.MediaRecorderFactory mockFactory =
+        mock(MediaRecorderBuilder.MediaRecorderFactory.class);
+    MediaRecorder mockMediaRecorder = mock(MediaRecorder.class);
+
+    doThrow(new RuntimeException())
+        .when(mockMediaRecorder)
+        .setVideoEncoder(MediaRecorder.VideoEncoder.HEVC);
+
+    String outputFilePath = "mock_video_file_path";
+    MediaRecorderBuilder builder =
+        new MediaRecorderBuilder(
+                recorderProfile,
+                mockFactory,
+                new MediaRecorderBuilder.RecordingParameters(
+                    outputFilePath, testFps, testVideoBitrate, testAudioBitrate, 5))
+            .setEnableAudio(true)
+            .setMediaOrientation(0);
+
+    when(mockFactory.makeMediaRecorder()).thenReturn(mockMediaRecorder);
+    when(recorderProfile.getVideoProfiles()).thenReturn(List.of(videoProfile));
+    when(recorderProfile.getAudioProfiles()).thenReturn(List.of(audioProfile));
+
+    MediaRecorder recorder = builder.build();
+
+    InOrder inOrder = inOrder(recorder);
+    inOrder.verify(recorder).setAudioSource(MediaRecorder.AudioSource.MIC);
+    inOrder.verify(recorder).setVideoSource(MediaRecorder.VideoSource.SURFACE);
+    inOrder.verify(recorder).setOutputFormat(recorderProfile.getRecommendedFileFormat());
+    inOrder.verify(recorder).setAudioEncoder(audioProfile.getCodec());
+    inOrder.verify(recorder).setAudioEncodingBitRate(testAudioBitrate);
+    inOrder.verify(recorder).setAudioSamplingRate(audioProfile.getSampleRate());
+    inOrder.verify(recorder).setVideoEncoder(videoProfile.getCodec());
+  }
+
   private CamcorderProfile getEmptyCamcorderProfile() {
     try {
       Constructor<CamcorderProfile> constructor =

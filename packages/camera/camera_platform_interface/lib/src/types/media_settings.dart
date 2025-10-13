@@ -5,6 +5,7 @@
 // ignore_for_file: avoid_equals_and_hash_code_on_mutable_classes
 
 import 'resolution_preset.dart';
+import 'video_codec.dart';
 
 /// Recording media settings.
 ///
@@ -18,6 +19,7 @@ class MediaSettings {
     this.fps,
     this.videoBitrate,
     this.audioBitrate,
+    this.videoCodec,
     this.enableAudio = false,
   }) : assert(fps == null || fps > 0, 'fps must be null or greater than zero'),
        assert(
@@ -41,6 +43,10 @@ class MediaSettings {
   /// The audio encoding bit rate for recording.
   final int? audioBitrate;
 
+  /// The requested video encoder. When null, platform default is used.
+  /// See [VideoCodec] for the list of available options.
+  final VideoCodec? videoCodec;
+
   /// Controls audio presence in recorded video.
   final bool enableAudio;
 
@@ -57,6 +63,7 @@ class MediaSettings {
         fps == other.fps &&
         videoBitrate == other.videoBitrate &&
         audioBitrate == other.audioBitrate &&
+        videoCodec == other.videoCodec &&
         enableAudio == other.enableAudio;
   }
 
@@ -66,6 +73,7 @@ class MediaSettings {
     fps,
     videoBitrate,
     audioBitrate,
+    videoCodec,
     enableAudio,
   );
 
@@ -76,6 +84,7 @@ class MediaSettings {
         'fps: $fps, '
         'videoBitrate: $videoBitrate, '
         'audioBitrate: $audioBitrate, '
+        'videoCodec: $videoCodec, '
         'enableAudio: $enableAudio}';
   }
 }

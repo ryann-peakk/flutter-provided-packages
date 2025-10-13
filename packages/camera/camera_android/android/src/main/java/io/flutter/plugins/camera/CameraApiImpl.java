@@ -70,6 +70,10 @@ final class CameraApiImpl implements Messages.CameraApi {
         (settings.getVideoBitrate() == null) ? null : settings.getVideoBitrate().intValue();
     Integer audioBitrate =
         (settings.getAudioBitrate() == null) ? null : settings.getAudioBitrate().intValue();
+    Integer videoCodec =
+        (settings.getVideoCodec() == null || settings.getVideoCodec().intValue() < 0)
+            ? null
+            : settings.getVideoCodec().intValue();
     ResolutionPreset resolutionPreset =
         CameraUtils.resolutionPresetFromPigeon(settings.getResolutionPreset());
 
@@ -81,7 +85,12 @@ final class CameraApiImpl implements Messages.CameraApi {
             dartMessenger,
             cameraProperties,
             new Camera.VideoCaptureSettings(
-                resolutionPreset, settings.getEnableAudio(), fps, videoBitrate, audioBitrate));
+                resolutionPreset,
+                settings.getEnableAudio(),
+                fps,
+                videoBitrate,
+                audioBitrate,
+                videoCodec));
 
     return flutterSurfaceTexture.id();
   }

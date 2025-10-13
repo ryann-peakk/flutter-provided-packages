@@ -198,7 +198,8 @@ public class CameraTest {
             mockCameraFeatureFactory,
             mockDartMessenger,
             mockCameraProperties,
-            new Camera.VideoCaptureSettings(resolutionPreset, enableAudio));
+            new Camera.VideoCaptureSettings(
+                resolutionPreset, enableAudio, null, null, null, null));
 
     final CamcorderProfile mockProfileLegacy = mock(CamcorderProfile.class);
     mockProfileLegacy.videoFrameRate = 15;
@@ -306,7 +307,8 @@ public class CameraTest {
             spyMockCameraFeatureFactory,
             mockDartMessenger,
             mockCameraProperties,
-            new Camera.VideoCaptureSettings(resolutionPreset, enableAudio));
+            new Camera.VideoCaptureSettings(
+                resolutionPreset, enableAudio, null, null, null, null));
 
     verify(spyMockCameraFeatureFactory, times(1))
         .createSensorOrientationFeature(mockCameraProperties, mockActivity, mockDartMessenger);
@@ -1229,7 +1231,12 @@ public class CameraTest {
 
     final Camera.VideoCaptureSettings parameters =
         new Camera.VideoCaptureSettings(
-            resolutionPreset, enableAudio, fps, videoBitrate, audioBitrate);
+            resolutionPreset,
+            enableAudio,
+            fps,
+            videoBitrate,
+            audioBitrate,
+            null);
 
     // Use a wildcard, since `new Range<Integer>[] {...}`
     // results in a 'Generic array creation' error.

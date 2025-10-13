@@ -41,6 +41,12 @@ void main() {
       );
 
       expect(
+        settingsWithNoParameters.videoCodec,
+        isNull,
+        reason: 'MediaSettings constructor should have null default videoCodec',
+      );
+
+      expect(
         settingsWithNoParameters.enableAudio,
         isFalse,
         reason:
@@ -55,6 +61,7 @@ void main() {
       fps: 20,
       videoBitrate: 128000,
       audioBitrate: 32000,
+      videoCodec: VideoCodec.hevc,
       enableAudio: true,
     );
 
@@ -84,6 +91,12 @@ void main() {
     );
 
     expect(
+      settings.videoCodec,
+      VideoCodec.hevc,
+      reason: 'MediaSettings constructor should hold videoCodec parameter',
+    );
+
+    expect(
       settings.enableAudio,
       true,
       reason: 'MediaSettings constructor should hold enableAudio parameter',
@@ -96,12 +109,20 @@ void main() {
       fps: 20,
       videoBitrate: 128000,
       audioBitrate: 32000,
+      videoCodec: VideoCodec.platformDefault,
       enableAudio: true,
     );
 
     expect(
       settings.hashCode,
-      Object.hash(ResolutionPreset.low, 20, 128000, 32000, true),
+      Object.hash(
+        ResolutionPreset.low,
+        20,
+        128000,
+        32000,
+        VideoCodec.platformDefault,
+        true,
+      ),
       reason:
           'MediaSettings hash() should be equal to Object.hash of parameters',
     );
@@ -113,18 +134,21 @@ void main() {
     const int videoBitrate1 = 128000;
     const int audioBitrate1 = 32000;
     const bool enableAudio1 = true;
+    const VideoCodec? videoCodec1 = VideoCodec.platformDefault;
 
     const ResolutionPreset preset2 = ResolutionPreset.high;
     const int fps2 = fps1 + 10;
     const int videoBitrate2 = videoBitrate1 * 2;
     const int audioBitrate2 = audioBitrate1 * 2;
     const bool enableAudio2 = !enableAudio1;
+    const VideoCodec? videoCodec2 = VideoCodec.hevc;
 
     const MediaSettings settings1 = MediaSettings(
       resolutionPreset: ResolutionPreset.low,
       fps: 20,
       videoBitrate: 128000,
       audioBitrate: 32000,
+      videoCodec: videoCodec1,
       enableAudio: true,
     );
 
@@ -134,6 +158,7 @@ void main() {
         fps: fps1,
         videoBitrate: videoBitrate1,
         audioBitrate: audioBitrate1,
+        videoCodec: videoCodec1,
         enableAudio: enableAudio1,
       );
 
@@ -146,6 +171,7 @@ void main() {
         fps: fps2,
         videoBitrate: videoBitrate1,
         audioBitrate: audioBitrate1,
+        videoCodec: videoCodec1,
         enableAudio: enableAudio1,
       );
 
@@ -158,6 +184,7 @@ void main() {
         fps: fps1,
         videoBitrate: videoBitrate2,
         audioBitrate: audioBitrate1,
+        videoCodec: videoCodec1,
         enableAudio: enableAudio1,
       );
 
@@ -170,6 +197,20 @@ void main() {
         fps: fps1,
         videoBitrate: videoBitrate1,
         audioBitrate: audioBitrate2,
+        videoCodec: videoCodec1,
+        enableAudio: enableAudio1,
+      );
+
+      expect(settings1 == settings2, isFalse);
+    });
+
+    test('should compare videoCodec', () {
+      const MediaSettings settings2 = MediaSettings(
+        resolutionPreset: preset1,
+        fps: fps1,
+        videoBitrate: videoBitrate1,
+        audioBitrate: audioBitrate1,
+        videoCodec: videoCodec2,
         enableAudio: enableAudio1,
       );
 
@@ -182,6 +223,7 @@ void main() {
         fps: fps1,
         videoBitrate: videoBitrate1,
         audioBitrate: audioBitrate1,
+        videoCodec: videoCodec1,
         // ignore: avoid_redundant_argument_values
         enableAudio: enableAudio2,
       );
@@ -195,6 +237,7 @@ void main() {
         fps: fps1,
         videoBitrate: videoBitrate1,
         audioBitrate: audioBitrate1,
+        videoCodec: videoCodec1,
         enableAudio: enableAudio1,
       );
 
