@@ -58,3 +58,8 @@ gradlew.bat
 .project
 .classpath
 .settings
+packages/camera/camera/lib/src/harfanmaula.code-workspace
+.gitignore
+packages/camera/camera_android/android/src/main/java/io/flutter/plugins/camera/log.log
+packages/camera/camera_android/android/src/main/java/io/flutter/plugins/camera/log2.log
+packages/camera/camera_android/android/src/camera2-library.code-workspace
