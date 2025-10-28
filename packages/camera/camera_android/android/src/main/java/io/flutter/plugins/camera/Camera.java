@@ -1013,8 +1013,8 @@ class Camera
       closeRenderer();
       captureSession.abortCaptures();
       mediaRecorder.stop();
-    } catch (CameraAccessException | IllegalStateException e) {
-      // Ignore exceptions and try to continue (changes are camera session already aborted capture).
+    } catch (CameraAccessException | IllegalStateException | NullPointerException e) {
+      e.printStackTrace();
     }
     mediaRecorder.reset();
     try {
