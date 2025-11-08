@@ -999,30 +999,73 @@ class Camera
   }
 
   public String stopVideoRecording() {
+    long stopStart = System.currentTimeMillis();
+    Log.i(TAG, "⏱️ STOP_BEGIN timestamp=" + stopStart);
+    
     if (!recordingVideo) {
+      Log.i(TAG, "⏱️ STOP_EARLY_RETURN - not recording");
       return "";
     }
+    
     // Re-create autofocus feature so it's using continuous capture focus mode now.
+    long autofocusStart = System.currentTimeMillis();
     cameraFeatures.setAutoFocus(
         cameraFeatureFactory.createAutoFocusFeature(cameraProperties, false));
     // Reset to non recording fps range (the default)
     cameraFeatures.setFpsRange(cameraFeatureFactory.createFpsRangeFeature(cameraProperties));
+    long autofocusEnd = System.currentTimeMillis();
+    Log.i(TAG, "⏱️ AUTOFOCUS_RESET duration=" + (autofocusEnd - autofocusStart) + "ms");
 
     recordingVideo = false;
     try {
+      long abortStart = System.currentTimeMillis();
+      Log.i(TAG, "⏱️ ABORT_CAPTURES_BEGIN timestamp=" + abortStart);
+      
       closeRenderer();
       captureSession.abortCaptures();
+      
+      long abortEnd = System.currentTimeMillis();
+      Log.i(TAG, "⏱️ ABORT_CAPTURES_END duration=" + (abortEnd - abortStart) + "ms");
+      
+      long recorderStopStart = System.currentTimeMillis();
+      Log.i(TAG, "⏱️ MEDIARECORDER_STOP_BEGIN timestamp=" + recorderStopStart);
+      
       mediaRecorder.stop();
+      
+      long recorderStopEnd = System.currentTimeMillis();
+      Log.i(TAG, "⏱️ MEDIARECORDER_STOP_END duration=" + (recorderStopEnd - recorderStopStart) + "ms");
+      
     } catch (CameraAccessException | IllegalStateException | NullPointerException e) {
       e.printStackTrace();
+      Log.e(TAG, "⏱️ STOP_ERROR exception=" + e.getClass().getSimpleName() + " message=" + e.getMessage());
     }
+    
+    long resetStart = System.currentTimeMillis();
+    Log.i(TAG, "⏱️ MEDIARECORDER_RESET_BEGIN timestamp=" + resetStart);
+    
     mediaRecorder.reset();
+    
+    long resetEnd = System.currentTimeMillis();
+    Log.i(TAG, "⏱️ MEDIARECORDER_RESET_END duration=" + (resetEnd - resetStart) + "ms");
+    
     try {
+      long previewStart = System.currentTimeMillis();
+      Log.i(TAG, "⏱️ START_PREVIEW_BEGIN timestamp=" + previewStart);
+      
       // Don't wait for start preview
       startPreview(null);
+      
+      long previewEnd = System.currentTimeMillis();
+      Log.i(TAG, "⏱️ START_PREVIEW_END duration=" + (previewEnd - previewStart) + "ms");
+      
     } catch (CameraAccessException | IllegalStateException | InterruptedException e) {
+      Log.e(TAG, "⏱️ START_PREVIEW_ERROR exception=" + e.getClass().getSimpleName());
       throw new Messages.FlutterError("videoRecordingFailed", e.getMessage(), null);
     }
+    
+    long stopEnd = System.currentTimeMillis();
+    Log.i(TAG, "⏱️ STOP_COMPLETE total_duration=" + (stopEnd - stopStart) + "ms");
+    
     String path = captureFile.getAbsolutePath();
     captureFile = null;
     return path;
