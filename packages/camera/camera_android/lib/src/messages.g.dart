@@ -218,6 +218,7 @@ class PlatformMediaSettings {
     this.audioBitrate,
     this.videoCodec,
     required this.enableAudio,
+    this.outputPath,
   });
 
   PlatformResolutionPreset resolutionPreset;
@@ -232,6 +233,10 @@ class PlatformMediaSettings {
 
   bool enableAudio;
 
+  /// Optional output path for video recording.
+  /// If null, defaults to app-specific external storage (Movies directory).
+  String? outputPath;
+
   Object encode() {
     return <Object?>[
       resolutionPreset,
@@ -240,6 +245,7 @@ class PlatformMediaSettings {
       audioBitrate,
       videoCodec,
       enableAudio,
+      outputPath,
     ];
   }
 
@@ -252,6 +258,7 @@ class PlatformMediaSettings {
       audioBitrate: result[3] as int?,
       videoCodec: result[4] as int?,
       enableAudio: result[5]! as bool,
+      outputPath: result[6] as String?,
     );
   }
 }

@@ -97,6 +97,7 @@ class PlatformMediaSettings {
     this.videoBitrate,
     this.audioBitrate,
     this.videoCodec,
+    this.outputPath,
   });
   final PlatformResolutionPreset resolutionPreset;
   final int? fps;
@@ -104,6 +105,9 @@ class PlatformMediaSettings {
   final int? audioBitrate;
   final int? videoCodec;
   final bool enableAudio;
+  /// Optional output path for video recording.
+  /// If null, defaults to app-specific external storage (Movies directory).
+  final String? outputPath;
 }
 
 /// Handles calls from Dart to the native side.

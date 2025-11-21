@@ -710,6 +710,20 @@ public class Messages {
       this.enableAudio = setterArg;
     }
 
+    /**
+     * Optional output path for video recording.
+     * If null, defaults to app-specific external storage (Movies directory).
+     */
+    private @Nullable String outputPath;
+
+    public @Nullable String getOutputPath() {
+      return outputPath;
+    }
+
+    public void setOutputPath(@Nullable String setterArg) {
+      this.outputPath = setterArg;
+    }
+
     /** Constructor is non-public to enforce null safety; use Builder. */
     PlatformMediaSettings() {}
 
@@ -718,12 +732,12 @@ public class Messages {
       if (this == o) { return true; }
       if (o == null || getClass() != o.getClass()) { return false; }
       PlatformMediaSettings that = (PlatformMediaSettings) o;
-      return resolutionPreset.equals(that.resolutionPreset) && Objects.equals(fps, that.fps) && Objects.equals(videoBitrate, that.videoBitrate) && Objects.equals(audioBitrate, that.audioBitrate) && Objects.equals(videoCodec, that.videoCodec) && enableAudio.equals(that.enableAudio);
+      return resolutionPreset.equals(that.resolutionPreset) && Objects.equals(fps, that.fps) && Objects.equals(videoBitrate, that.videoBitrate) && Objects.equals(audioBitrate, that.audioBitrate) && Objects.equals(videoCodec, that.videoCodec) && enableAudio.equals(that.enableAudio) && Objects.equals(outputPath, that.outputPath);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(resolutionPreset, fps, videoBitrate, audioBitrate, videoCodec, enableAudio);
+      return Objects.hash(resolutionPreset, fps, videoBitrate, audioBitrate, videoCodec, enableAudio, outputPath);
     }
 
     public static final class Builder {
@@ -776,6 +790,14 @@ public class Messages {
         return this;
       }
 
+      private @Nullable String outputPath;
+
+      @CanIgnoreReturnValue
+      public @NonNull Builder setOutputPath(@Nullable String setterArg) {
+        this.outputPath = setterArg;
+        return this;
+      }
+
       public @NonNull PlatformMediaSettings build() {
         PlatformMediaSettings pigeonReturn = new PlatformMediaSettings();
         pigeonReturn.setResolutionPreset(resolutionPreset);
@@ -784,19 +806,21 @@ public class Messages {
         pigeonReturn.setAudioBitrate(audioBitrate);
         pigeonReturn.setVideoCodec(videoCodec);
         pigeonReturn.setEnableAudio(enableAudio);
+        pigeonReturn.setOutputPath(outputPath);
         return pigeonReturn;
       }
     }
 
     @NonNull
     ArrayList<Object> toList() {
-      ArrayList<Object> toListResult = new ArrayList<>(6);
+      ArrayList<Object> toListResult = new ArrayList<>(7);
       toListResult.add(resolutionPreset);
       toListResult.add(fps);
       toListResult.add(videoBitrate);
       toListResult.add(audioBitrate);
       toListResult.add(videoCodec);
       toListResult.add(enableAudio);
+      toListResult.add(outputPath);
       return toListResult;
     }
 
@@ -814,6 +838,8 @@ public class Messages {
       pigeonResult.setVideoCodec((Long) videoCodec);
       Object enableAudio = pigeonVar_list.get(5);
       pigeonResult.setEnableAudio((Boolean) enableAudio);
+      Object outputPath = pigeonVar_list.get(6);
+      pigeonResult.setOutputPath((String) outputPath);
       return pigeonResult;
     }
   }
