@@ -1,3 +1,7 @@
+## 0.10.10+8
+
+* Add optional outputPath parameter to video recording. Videos now default to external storage Movies directory (gallery-visible, auto-deleted with app) instead of cache.
+
 ## 0.10.10+7
 
 * Updates minimum supported SDK version to Flutter 3.35.

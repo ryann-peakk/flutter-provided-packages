@@ -21,6 +21,7 @@ class MediaSettings {
     this.audioBitrate,
     this.videoCodec,
     this.enableAudio = false,
+    this.outputPath,
   }) : assert(fps == null || fps > 0, 'fps must be null or greater than zero'),
        assert(
          videoBitrate == null || videoBitrate > 0,
@@ -50,6 +51,12 @@ class MediaSettings {
   /// Controls audio presence in recorded video.
   final bool enableAudio;
 
+  /// Optional output path for video recording.
+  ///
+  /// When null, the platform implementation will choose a default location.
+  /// On Android, defaults to app-specific external storage (Movies directory).
+  final String? outputPath;
+
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) {
@@ -64,7 +71,8 @@ class MediaSettings {
         videoBitrate == other.videoBitrate &&
         audioBitrate == other.audioBitrate &&
         videoCodec == other.videoCodec &&
-        enableAudio == other.enableAudio;
+        enableAudio == other.enableAudio &&
+        outputPath == other.outputPath;
   }
 
   @override
@@ -75,6 +83,7 @@ class MediaSettings {
     audioBitrate,
     videoCodec,
     enableAudio,
+    outputPath,
   );
 
   @override
@@ -85,6 +94,7 @@ class MediaSettings {
         'videoBitrate: $videoBitrate, '
         'audioBitrate: $audioBitrate, '
         'videoCodec: $videoCodec, '
-        'enableAudio: $enableAudio}';
+        'enableAudio: $enableAudio, '
+        'outputPath: $outputPath}';
   }
 }

@@ -111,17 +111,22 @@ PlatformMediaSettings mediaSettingsToPlatform(MediaSettings? settings) =>
       audioBitrate: settings?.audioBitrate,
       fps: settings?.fps,
       videoCodec: codecToWire(settings?.videoCodec),
+      outputPath: settings?.outputPath,
     );
 
-MediaSettings mediaSettingsFromPlatform(PlatformMediaSettings settings) => MediaSettings(
+/// Converts platform [PlatformMediaSettings] to [MediaSettings].
+MediaSettings mediaSettingsFromPlatform(PlatformMediaSettings settings) =>
+    MediaSettings(
       resolutionPreset: resolutionPresetFromPlatform(settings.resolutionPreset),
       enableAudio: settings.enableAudio,
       fps: settings.fps,
       videoBitrate: settings.videoBitrate,
       audioBitrate: settings.audioBitrate,
       videoCodec: codecFromWire(settings.videoCodec),
+      outputPath: settings.outputPath,
     );
 
+/// Converts [VideoCodec] to wire format integer value.
 int? codecToWire(VideoCodec? codec) {
   switch (codec) {
     case VideoCodec.platformDefault:
@@ -133,6 +138,7 @@ int? codecToWire(VideoCodec? codec) {
   }
 }
 
+/// Converts wire format integer value to [VideoCodec].
 VideoCodec? codecFromWire(int? value) {
   switch (value) {
     case kVideoCodecDefaultWireValue:
@@ -146,7 +152,10 @@ VideoCodec? codecFromWire(int? value) {
   }
 }
 
-ResolutionPreset? resolutionPresetFromPlatform(PlatformResolutionPreset? preset) {
+/// Converts platform [PlatformResolutionPreset] to [ResolutionPreset].
+ResolutionPreset? resolutionPresetFromPlatform(
+  PlatformResolutionPreset? preset,
+) {
   switch (preset) {
     case PlatformResolutionPreset.low:
       return ResolutionPreset.low;

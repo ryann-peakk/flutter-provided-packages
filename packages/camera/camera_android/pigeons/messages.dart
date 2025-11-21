@@ -105,6 +105,7 @@ class PlatformMediaSettings {
   final int? audioBitrate;
   final int? videoCodec;
   final bool enableAudio;
+
   /// Optional output path for video recording.
   /// If null, defaults to app-specific external storage (Movies directory).
   final String? outputPath;
