@@ -90,7 +90,8 @@ final class CameraApiImpl implements Messages.CameraApi {
                 fps,
                 videoBitrate,
                 audioBitrate,
-                videoCodec));
+                videoCodec,
+                settings.getOutputPath()));
 
     return flutterSurfaceTexture.id();
   }

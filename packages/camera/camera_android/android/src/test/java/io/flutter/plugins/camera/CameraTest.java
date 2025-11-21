@@ -199,7 +199,7 @@ public class CameraTest {
             mockDartMessenger,
             mockCameraProperties,
             new Camera.VideoCaptureSettings(
-                resolutionPreset, enableAudio, null, null, null, null));
+                resolutionPreset, enableAudio, null, null, null, null, null));
 
     final CamcorderProfile mockProfileLegacy = mock(CamcorderProfile.class);
     mockProfileLegacy.videoFrameRate = 15;
@@ -308,7 +308,7 @@ public class CameraTest {
             mockDartMessenger,
             mockCameraProperties,
             new Camera.VideoCaptureSettings(
-                resolutionPreset, enableAudio, null, null, null, null));
+                resolutionPreset, enableAudio, null, null, null, null, null));
 
     verify(spyMockCameraFeatureFactory, times(1))
         .createSensorOrientationFeature(mockCameraProperties, mockActivity, mockDartMessenger);
@@ -1236,6 +1236,7 @@ public class CameraTest {
             fps,
             videoBitrate,
             audioBitrate,
+            null,
             null);
 
     // Use a wildcard, since `new Range<Integer>[] {...}`

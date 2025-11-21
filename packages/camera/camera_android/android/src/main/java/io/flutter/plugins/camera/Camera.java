@@ -183,6 +183,7 @@ class Camera
     @Nullable public final Integer videoBitrate;
     @Nullable public final Integer audioBitrate;
     @Nullable public final Integer videoCodec;
+    @Nullable public final String outputPath;
 
     public VideoCaptureSettings(
         @NonNull ResolutionPreset resolutionPreset,
@@ -190,17 +191,19 @@ class Camera
         @Nullable Integer fps,
         @Nullable Integer videoBitrate,
         @Nullable Integer audioBitrate,
-        @Nullable Integer videoCodec) {
+        @Nullable Integer videoCodec,
+        @Nullable String outputPath) {
       this.resolutionPreset = resolutionPreset;
       this.enableAudio = enableAudio;
       this.fps = fps;
       this.videoBitrate = videoBitrate;
       this.audioBitrate = audioBitrate;
       this.videoCodec = videoCodec;
+      this.outputPath = outputPath;
     }
 
     public VideoCaptureSettings(@NonNull ResolutionPreset resolutionPreset, boolean enableAudio) {
-      this(resolutionPreset, enableAudio, null, null, null, null);
+      this(resolutionPreset, enableAudio, null, null, null, null, null);
     }
   }
 
@@ -1474,12 +1477,32 @@ class Camera
 
   @VisibleForTesting
   void prepareRecording() {
-    final File outputDir = applicationContext.getCacheDir();
-    try {
-      captureFile = File.createTempFile("REC", ".mp4", outputDir);
-    } catch (IOException | SecurityException e) {
-      throw new Messages.FlutterError("cannotCreateFile", e.getMessage(), null);
+    if (videoCaptureSettings.outputPath != null) {
+      // User provided custom output path - use it directly
+      captureFile = new File(videoCaptureSettings.outputPath);
+      File parentDir = captureFile.getParentFile();
+      if (parentDir != null && !parentDir.exists()) {
+        if (!parentDir.mkdirs()) {
+          throw new Messages.FlutterError(
+              "cannotCreateFile",
+              "Failed to create directory: " + parentDir.getAbsolutePath(),
+              null);
+        }
+      }
+    } else {
+      // Default: use external storage Movies directory (gallery-visible, auto-deleted with app)
+      File outputDir = applicationContext.getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES);
+      if (outputDir == null) {
+        // Fallback to cache if external storage unavailable
+        outputDir = applicationContext.getCacheDir();
+      }
+      try {
+        captureFile = File.createTempFile("REC", ".mp4", outputDir);
+      } catch (IOException | SecurityException e) {
+        throw new Messages.FlutterError("cannotCreateFile", e.getMessage(), null);
+      }
     }
+    
     try {
       prepareMediaRecorder(captureFile.getAbsolutePath());
     } catch (IOException e) {

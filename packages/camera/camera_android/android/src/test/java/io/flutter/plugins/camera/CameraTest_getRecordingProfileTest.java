@@ -75,7 +75,7 @@ public class CameraTest_getRecordingProfileTest {
             mockCameraFeatureFactory,
             mockDartMessenger,
             mockCameraProperties,
-            new Camera.VideoCaptureSettings(resolutionPreset, enableAudio, null, null, null, null));
+            new Camera.VideoCaptureSettings(resolutionPreset, enableAudio, null, null, null, null, null));
   }
 
   @Config(maxSdk = 30)
