@@ -1070,6 +1070,16 @@ class Camera
     Log.i(TAG, "⏱️ STOP_COMPLETE total_duration=" + (stopEnd - stopStart) + "ms");
     
     String path = captureFile.getAbsolutePath();
+    
+    // Trigger media scan to make video visible in gallery
+    android.media.MediaScannerConnection.scanFile(
+        applicationContext,
+        new String[]{path},
+        new String[]{"video/mp4"},
+        null
+    );
+    Log.i(TAG, "📸 Media scan triggered for gallery visibility: " + path);
+    
     captureFile = null;
     return path;
   }
@@ -1490,7 +1500,9 @@ class Camera
         }
       }
     } else {
-      // Default: use external storage Movies directory (gallery-visible, auto-deleted with app)
+      // Default: use external storage Movies directory (app-specific storage)
+      // Files are auto-deleted when app is uninstalled
+      // For gallery visibility, trigger media scan after recording completes
       File outputDir = applicationContext.getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES);
       if (outputDir == null) {
         // Fallback to cache if external storage unavailable
