@@ -244,6 +244,9 @@ class CameraController extends ValueNotifier<CameraValue> {
   /// - [videoBitrate] controls the video encoding bit rate for recording.
   /// - [audioBitrate] controls the audio encoding bit rate for recording.
   /// - [videoCodec] selects a preferred encoder when supported by the platform.
+  /// - [outputPath] specifies the full path (including filename and extension) where
+  ///   videos should be saved. When null, defaults to platform-specific storage
+  ///   (Android: external files Movies directory, iOS: app documents directory).
 
   CameraController(
     CameraDescription description,
@@ -253,6 +256,7 @@ class CameraController extends ValueNotifier<CameraValue> {
     int? videoBitrate,
     int? audioBitrate,
     VideoCodec? videoCodec,
+    String? outputPath,
     this.imageFormatGroup,
   }) : mediaSettings = MediaSettings(
          resolutionPreset: resolutionPreset,
@@ -261,6 +265,7 @@ class CameraController extends ValueNotifier<CameraValue> {
          videoBitrate: videoBitrate,
          audioBitrate: audioBitrate,
          videoCodec: videoCodec,
+         outputPath: outputPath,
        ),
        super(CameraValue.uninitialized(description));
 
