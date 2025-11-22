@@ -1,5 +1,6 @@
-## NEXT
+## 0.2.6+3
 
+* Add outputPath parameter to CameraController for custom video save locations.
 * Updates minimum supported SDK version to Flutter 3.29/Dart 3.7.
 
 ## 0.2.6+2

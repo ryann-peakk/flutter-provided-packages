@@ -1,3 +1,7 @@
+## 0.6.21+3
+
+* Add outputPath parameter to CameraController for custom video save locations.
+
 ## 0.6.21+1
 
 * Updates to stable version of `androidx.camera` 1.5.
