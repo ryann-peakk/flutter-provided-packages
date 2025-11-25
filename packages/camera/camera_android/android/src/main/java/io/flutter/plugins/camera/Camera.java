@@ -81,9 +81,6 @@ class Camera
         ImageReader.OnImageAvailableListener {
   private static final String TAG = "Camera";
 
-  /** Diagnostic logger for detailed camera lifecycle and state tracking */
-  private final CameraDiagnosticLogger diagLog;
-
   /**
    * Holds all of the camera features/settings and will be used to update the request builder when
    * one changes.
@@ -228,14 +225,6 @@ class Camera
     this.cameraProperties = cameraProperties;
     this.cameraFeatureFactory = cameraFeatureFactory;
     this.videoCaptureSettings = videoCaptureSettings;
-    
-    // Initialize diagnostic logger
-    this.diagLog = CameraDiagnosticLogger.getInstance(applicationContext);
-    if (!diagLog.isInitialized.get()) {
-      diagLog.initialize();
-    }
-    diagLog.info("Camera instance created");
-    diagLog.logMemory("Camera constructor");
     this.cameraFeatures =
         CameraFeatures.init(
             cameraFeatureFactory,
@@ -424,10 +413,6 @@ class Camera
 
   @SuppressLint("MissingPermission")
   public void open(Integer imageFormatGroup) throws CameraAccessException {
-    diagLog.logLifecycle("OPEN_START", "imageFormat=" + imageFormatGroup + ", cameraName=" + cameraProperties.getCameraName());
-    diagLog.logThread("open()");
-    diagLog.logMemory("Before open");
-    
     this.imageFormatGroup = imageFormatGroup;
     final ResolutionFeature resolutionFeature = cameraFeatures.getResolution();
 
@@ -435,15 +420,12 @@ class Camera
       // Tell the user that the camera they are trying to open is not supported,
       // as its {@link android.media.CamcorderProfile} cannot be fetched due to the name
       // not being a valid parsable integer.
-      diagLog.error("Camera not supported: " + cameraProperties.getCameraName(), null);
       dartMessenger.sendCameraErrorEvent(
           "Camera with name \""
               + cameraProperties.getCameraName()
               + "\" is not supported by this plugin.");
       return;
     }
-    
-    diagLog.info("Creating image readers - capture: " + resolutionFeature.getCaptureSize() + ", preview: " + resolutionFeature.getPreviewSize());
 
     // Always capture using JPEG format.
     pictureImageReader =
@@ -461,28 +443,19 @@ class Camera
             1);
 
     // Open the camera.
-    diagLog.info("Calling openCamera() for: " + cameraProperties.getCameraName());
     CameraManager cameraManager = CameraUtils.getCameraManager(activity);
     cameraManager.openCamera(
         cameraProperties.getCameraName(),
         new CameraDevice.StateCallback() {
           @Override
           public void onOpened(@NonNull CameraDevice device) {
-            diagLog.logLifecycle("ON_OPENED", "CameraID=" + device.getId());
-            diagLog.logStateChange("CLOSED", "OPENED", "CameraDevice.StateCallback.onOpened");
-            diagLog.logThread("onOpened callback");
-            diagLog.logCameraDevice("Opened", device.getId());
-            
             cameraDevice = new DefaultCameraDeviceWrapper(device);
-            diagLog.info("Camera device wrapped successfully");
-            
             try {
               // only send initialization if we werent already recording and switching cameras
               Runnable onSuccess =
                   recordingVideo
                       ? null
-                      : () -> {
-                          diagLog.info("Sending camera initialized event to Flutter");
+                      : () ->
                           dartMessenger.sendCameraInitializedEvent(
                               resolutionFeature.getPreviewSize().getWidth(),
                               resolutionFeature.getPreviewSize().getHeight(),
@@ -490,17 +463,12 @@ class Camera
                               cameraFeatures.getAutoFocus().getValue(),
                               cameraFeatures.getExposurePoint().checkIsSupported(),
                               cameraFeatures.getFocusPoint().checkIsSupported());
-                        };
-              diagLog.info("Starting preview");
               startPreview(onSuccess);
-              diagLog.info("startPreview() succeeded");
             } catch (Exception e) {
               String message =
                   (e.getMessage() == null)
                       ? (e.getClass().getName() + " occurred while opening camera.")
                       : e.getMessage();
-              diagLog.error("startPreview() FAILED: " + message, e);
-              diagLog.logMemory("After startPreview failure");
               if (BuildConfig.DEBUG) {
                 Log.i(TAG, "open | onOpened error: " + message);
               }
@@ -511,31 +479,17 @@ class Camera
 
           @Override
           public void onClosed(@NonNull CameraDevice camera) {
-            diagLog.logLifecycle("ON_CLOSED", "CameraID=" + camera.getId());
-            diagLog.logStateChange("OPENED", "CLOSED", "CameraDevice.StateCallback.onClosed");
-            diagLog.logThread("onClosed callback");
-            diagLog.logCameraDevice("Closed", camera.getId());
-            
             Log.i(TAG, "open | onClosed");
 
             // Prevents calls to methods that would otherwise result in IllegalStateException
             // exceptions.
             cameraDevice = null;
-            diagLog.info("Camera device reference nullified");
             closeCaptureSession();
             dartMessenger.sendCameraClosingEvent();
-            diagLog.info("Sent camera closing event to Flutter");
           }
 
           @Override
           public void onDisconnected(@NonNull CameraDevice cameraDevice) {
-            diagLog.logLifecycle("ON_DISCONNECTED", "CameraID=" + cameraDevice.getId());
-            diagLog.logStateChange("OPENED", "DISCONNECTED", "CameraDevice.StateCallback.onDisconnected");
-            diagLog.error("Camera disconnected unexpectedly", null);
-            diagLog.logMemory("At disconnect");
-            diagLog.logThread("onDisconnected callback");
-            diagLog.logCameraDevice("Disconnected", cameraDevice.getId());
-            
             Log.i(TAG, "open | onDisconnected");
 
             close();
@@ -544,11 +498,6 @@ class Camera
 
           @Override
           public void onError(@NonNull CameraDevice cameraDevice, int errorCode) {
-            diagLog.logLifecycle("ON_ERROR", "CameraID=" + cameraDevice.getId() + ", ErrorCode=" + errorCode);
-            diagLog.logThread("onError callback");
-            diagLog.logMemory("At error");
-            diagLog.logCameraDevice("Error", cameraDevice.getId());
-            
             Log.i(TAG, "open | onError");
 
             close();
@@ -572,12 +521,10 @@ class Camera
               default:
                 errorDescription = "Unknown camera error";
             }
-            diagLog.error("CameraDevice error: code=" + errorCode + " (" + errorDescription + ")", null);
             dartMessenger.sendCameraErrorEvent(errorDescription);
           }
         },
         backgroundHandler);
-    diagLog.info("openCamera() call completed, waiting for callback...");
   }
 
   @VisibleForTesting
@@ -1607,10 +1554,6 @@ class Camera
   }
 
   public void close() {
-    diagLog.logLifecycle("CLOSE_START", "cameraDevice=" + (cameraDevice != null ? "exists" : "null"));
-    diagLog.logThread("close()");
-    diagLog.logMemory("Before close");
-    
     Log.i(TAG, "close");
 
     stopAndReleaseCamera();
@@ -1618,31 +1561,22 @@ class Camera
     if (pictureImageReader != null) {
       pictureImageReader.close();
       pictureImageReader = null;
-      diagLog.info("Picture image reader closed");
     }
     if (imageStreamReader != null) {
       imageStreamReader.close();
       imageStreamReader = null;
-      diagLog.info("Image stream reader closed");
     }
     if (mediaRecorder != null) {
       mediaRecorder.reset();
       mediaRecorder.release();
       mediaRecorder = null;
-      diagLog.info("Media recorder released");
     }
 
-    // NOTE: Background thread is NOT stopped here (moved to dispose() to prevent race conditions)
-    // This allows rapid close/initialize cycles without breaking the background handler
-    diagLog.logMemory("After close");
-    diagLog.info("close() completed (background thread NOT stopped)");
+    stopBackgroundThread();
   }
 
   private void stopAndReleaseCamera() {
-    diagLog.info("stopAndReleaseCamera() - cameraDevice=" + (cameraDevice != null ? "exists" : "null"));
-    
     if (cameraDevice != null) {
-      diagLog.logCameraDevice("Closing device", null);
       cameraDevice.close();
       cameraDevice = null;
 
@@ -1650,9 +1584,7 @@ class Camera
       // for quickly closing the camera:
       // https://developer.android.com/reference/android/hardware/camera2/CameraCaptureSession#close()
       captureSession = null;
-      diagLog.info("Camera device closed and nullified");
     } else {
-      diagLog.warning("stopAndReleaseCamera() called but cameraDevice already null");
       closeCaptureSession();
     }
   }
@@ -1718,24 +1650,11 @@ class Camera
   }
 
   public void dispose() {
-    diagLog.logLifecycle("DISPOSE_START", "Disposing camera instance");
-    diagLog.logThread("dispose()");
-    diagLog.logMemory("Before dispose");
-    
     Log.i(TAG, "dispose");
 
     close();
     flutterTexture.release();
-    diagLog.info("Flutter texture released");
     getDeviceOrientationManager().stop();
-    diagLog.info("Device orientation manager stopped");
-    
-    // Stop background thread HERE (not in close()) to prevent race conditions
-    stopBackgroundThread();
-    
-    diagLog.logMemory("After dispose");
-    diagLog.info("dispose() completed");
-    diagLog.flush(); // Ensure all logs are written before disposal
   }
 
   /** Factory class that assists in creating a {@link HandlerThread} instance. */
