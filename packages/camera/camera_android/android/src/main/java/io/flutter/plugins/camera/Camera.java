@@ -170,7 +170,7 @@ class Camera
         @NonNull CameraCaptureSession.StateCallback callback,
         @Nullable Handler handler)
         throws CameraAccessException {
-      cameraDevice.createCaptureSession(outputs, callback, backgroundHandler);
+      cameraDevice.createCaptureSession(outputs, callback, getBackgroundHandler());
     }
 
     @Override
@@ -234,7 +234,7 @@ class Camera
     if (!diagLog.isInitialized.get()) {
       diagLog.initialize();
     }
-    diagLog.info("Camera instance created");
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Camera instance created");
     diagLog.logMemory("Camera constructor");
     this.cameraFeatures =
         CameraFeatures.init(
@@ -447,7 +447,7 @@ class Camera
       // Tell the user that the camera they are trying to open is not supported,
       // as its {@link android.media.CamcorderProfile} cannot be fetched due to the name
       // not being a valid parsable integer.
-      diagLog.error("Camera not supported: " + cameraProperties.getCameraName(), null);
+      diagLog.error(CameraDiagnosticLogger.LogCategory.CRITICAL, "Camera not supported: " + cameraProperties.getCameraName(), null);
       dartMessenger.sendCameraErrorEvent(
           "Camera with name \""
               + cameraProperties.getCameraName()
@@ -455,7 +455,7 @@ class Camera
       return;
     }
     
-    diagLog.info("Creating image readers - capture: " + resolutionFeature.getCaptureSize() + ", preview: " + resolutionFeature.getPreviewSize());
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Creating image readers - capture: " + resolutionFeature.getCaptureSize() + ", preview: " + resolutionFeature.getPreviewSize());
 
     // Always capture using JPEG format.
     pictureImageReader =
@@ -473,7 +473,7 @@ class Camera
             1);
 
     // Open the camera.
-    diagLog.info("Calling openCamera() for: " + cameraProperties.getCameraName());
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Calling openCamera() for: " + cameraProperties.getCameraName());
     CameraManager cameraManager = CameraUtils.getCameraManager(activity);
     cameraManager.openCamera(
         cameraProperties.getCameraName(),
@@ -486,7 +486,7 @@ class Camera
             diagLog.logCameraDevice("Opened", device.getId());
             
             cameraDevice = new DefaultCameraDeviceWrapper(device);
-            diagLog.info("Camera device wrapped successfully");
+            diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Camera device wrapped successfully");
             
             try {
               // only send initialization if we werent already recording and switching cameras
@@ -503,15 +503,15 @@ class Camera
                               cameraFeatures.getExposurePoint().checkIsSupported(),
                               cameraFeatures.getFocusPoint().checkIsSupported());
                         };
-              diagLog.info("Starting preview");
+              diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Starting preview");
               startPreview(onSuccess);
-              diagLog.info("startPreview() succeeded");
+              diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "startPreview() succeeded");
             } catch (Exception e) {
               String message =
                   (e.getMessage() == null)
                       ? (e.getClass().getName() + " occurred while opening camera.")
                       : e.getMessage();
-              diagLog.error("startPreview() FAILED: " + message, e);
+              diagLog.error(CameraDiagnosticLogger.LogCategory.CRITICAL, "startPreview() FAILED: " + message, e);
               diagLog.logMemory("After startPreview failure");
               if (BuildConfig.DEBUG) {
                 Log.i(TAG, "open | onOpened error: " + message);
@@ -533,17 +533,17 @@ class Camera
             // Prevents calls to methods that would otherwise result in IllegalStateException
             // exceptions.
             cameraDevice = null;
-            diagLog.info("Camera device reference nullified");
+            diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Camera device reference nullified");
             closeCaptureSession();
             dartMessenger.sendCameraClosingEvent();
-            diagLog.info("Sent camera closing event to Flutter");
+            diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Sent camera closing event to Flutter");
           }
 
           @Override
           public void onDisconnected(@NonNull CameraDevice cameraDevice) {
             diagLog.logLifecycle("ON_DISCONNECTED", "CameraID=" + cameraDevice.getId());
             diagLog.logStateChange("OPENED", "DISCONNECTED", "CameraDevice.StateCallback.onDisconnected");
-            diagLog.error("Camera disconnected unexpectedly", null);
+            diagLog.error(CameraDiagnosticLogger.LogCategory.CRITICAL, "Camera disconnected unexpectedly", null);
             diagLog.logMemory("At disconnect");
             diagLog.logThread("onDisconnected callback");
             diagLog.logCameraDevice("Disconnected", cameraDevice.getId());
@@ -584,12 +584,12 @@ class Camera
               default:
                 errorDescription = "Unknown camera error";
             }
-            diagLog.error("CameraDevice error: code=" + errorCode + " (" + errorDescription + ")", null);
+            diagLog.error(CameraDiagnosticLogger.LogCategory.CRITICAL, "CameraDevice error: code=" + errorCode + " (" + errorDescription + ")", null);
             dartMessenger.sendCameraErrorEvent(errorDescription);
           }
         },
-        backgroundHandler);
-    diagLog.info("openCamera() call completed, waiting for callback...");
+        getBackgroundHandler());
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "openCamera() call completed, waiting for callback...");
   }
 
   @VisibleForTesting
@@ -602,6 +602,12 @@ class Camera
       throws CameraAccessException {
     // Log template information
     String templateName = getTemplateName(templateType);
+    diagLog.logLifecycle("SESSION_CREATE_START", 
+      "template=" + templateName + ", surfaces=" + surfaces.length);
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "[SESSION] recordingVideo=" + recordingVideo + 
+                 ", pausedPreview=" + pausedPreview);
+    diagLog.info(CameraDiagnosticLogger.LogCategory.THREAD, "[SESSION] cameraDevice=" + 
+                 (cameraDevice != null ? "exists" : "null"));
     Log.d(TAG, "=== CREATING CAPTURE SESSION ===");
     Log.d(TAG, "Template type: " + templateType + " (" + templateName + ")");
     Log.d(TAG, "Number of surfaces: " + surfaces.length);
@@ -650,9 +656,12 @@ class Camera
 
           @Override
           public void onConfigured(@NonNull CameraCaptureSession session) {
+            diagLog.logLifecycle("SESSION_CONFIGURED", "sessionHashCode=" + session.hashCode());
+            diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "[SESSION] State: onConfigured, recordingVideo=" + recordingVideo);
             Log.i(TAG, "CameraCaptureSession onConfigured");
             // Camera was already closed.
             if (cameraDevice == null || captureSessionClosed) {
+              diagLog.warning(CameraDiagnosticLogger.LogCategory.CRITICAL, "[SESSION] Camera closed during configuration");
               dartMessenger.sendCameraErrorEvent("The camera was closed during configuration.");
               return;
             }
@@ -693,12 +702,16 @@ class Camera
 
           @Override
           public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
+            diagLog.logLifecycle("SESSION_CONFIGURE_FAILED", "sessionHashCode=" + cameraCaptureSession.hashCode());
+            diagLog.error(CameraDiagnosticLogger.LogCategory.CRITICAL, "[SESSION] Configuration failed", null);
             Log.i(TAG, "CameraCaptureSession onConfigureFailed");
             dartMessenger.sendCameraErrorEvent("Failed to configure camera session.");
           }
 
           @Override
           public void onClosed(@NonNull CameraCaptureSession session) {
+            diagLog.logLifecycle("SESSION_CLOSED", "sessionHashCode=" + session.hashCode());
+            diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "[SESSION] State: onClosed");
             Log.i(TAG, "CameraCaptureSession onClosed");
             captureSessionClosed = true;
           }
@@ -739,7 +752,7 @@ class Camera
   private void createCaptureSession(
       List<Surface> surfaces, CameraCaptureSession.StateCallback callback)
       throws CameraAccessException {
-    cameraDevice.createCaptureSession(surfaces, callback, backgroundHandler);
+    cameraDevice.createCaptureSession(surfaces, callback, getBackgroundHandler());
   }
 
   // Send a repeating request to refresh  capture session.
@@ -768,7 +781,7 @@ class Camera
         Log.d(TAG, "Recording state: " + recordingVideo);
         Log.d(TAG, "=========================================");
         
-        captureSession.setRepeatingRequest(finalRequest, cameraCaptureCallback, backgroundHandler);
+        captureSession.setRepeatingRequest(finalRequest, cameraCaptureCallback, getBackgroundHandler());
       }
 
       if (onSuccessCallback != null) {
@@ -844,7 +857,7 @@ class Camera
     }
 
     // Listen for picture being taken.
-    pictureImageReader.setOnImageAvailableListener(this, backgroundHandler);
+    pictureImageReader.setOnImageAvailableListener(this, getBackgroundHandler());
 
     final AutoFocusFeature autoFocusFeature = cameraFeatures.getAutoFocus();
     final boolean isAutoFocusSupported = autoFocusFeature.checkIsSupported();
@@ -867,7 +880,7 @@ class Camera
           CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
           CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
       captureSession.capture(
-          previewRequestBuilder.build(), cameraCaptureCallback, backgroundHandler);
+          previewRequestBuilder.build(), cameraCaptureCallback, getBackgroundHandler());
 
       // Repeating request to refresh preview session.
       refreshPreviewCaptureSession(
@@ -883,7 +896,7 @@ class Camera
 
       // Trigger one capture to start AE sequence.
       captureSession.capture(
-          previewRequestBuilder.build(), cameraCaptureCallback, backgroundHandler);
+          previewRequestBuilder.build(), cameraCaptureCallback, getBackgroundHandler());
 
     } catch (CameraAccessException e) {
       e.printStackTrace();
@@ -941,7 +954,7 @@ class Camera
 
     try {
       Log.i(TAG, "sending capture request");
-      captureSession.capture(stillBuilder.build(), captureCallback, backgroundHandler);
+      captureSession.capture(stillBuilder.build(), captureCallback, getBackgroundHandler());
     } catch (CameraAccessException e) {
       dartMessenger.error(flutterResult, "cameraAccess", e.getMessage(), null);
     }
@@ -954,26 +967,43 @@ class Camera
 
   /** Starts a background thread and its {@link Handler}. */
   public void startBackgroundThread() {
+    diagLog.logLifecycle("BG_THREAD_START_CALLED", 
+      "existing=" + (backgroundHandlerThread != null ? backgroundHandlerThread.getName() : "null"));
+    
     if (backgroundHandlerThread != null) {
+      diagLog.warning(CameraDiagnosticLogger.LogCategory.THREAD, "[BG_THREAD] Thread already exists: " + backgroundHandlerThread.getName());
       return;
     }
 
     backgroundHandlerThread = HandlerThreadFactory.create("CameraBackground");
     try {
+      diagLog.info(CameraDiagnosticLogger.LogCategory.THREAD, "[BG_THREAD] Starting thread: " + backgroundHandlerThread.getName());
       backgroundHandlerThread.start();
+      diagLog.info(CameraDiagnosticLogger.LogCategory.THREAD, "[BG_THREAD] Thread started successfully");
     } catch (IllegalThreadStateException e) {
-      // Ignore exception in case the thread has already started.
+      diagLog.error(CameraDiagnosticLogger.LogCategory.THREAD, "[BG_THREAD] Thread start failed", e);
     }
     backgroundHandler = HandlerFactory.create(backgroundHandlerThread.getLooper());
+    diagLog.logLifecycle("BG_THREAD_START_COMPLETE", "threadName=" + backgroundHandlerThread.getName());
   }
 
   /** Stops the background thread and its {@link Handler}. */
   public void stopBackgroundThread() {
+    diagLog.logLifecycle("BG_THREAD_STOP_CALLED", 
+      "threadExists=" + (backgroundHandlerThread != null));
+    
     if (backgroundHandlerThread != null) {
+      diagLog.info(CameraDiagnosticLogger.LogCategory.THREAD, "[BG_THREAD] Calling quitSafely on: " + backgroundHandlerThread.getName());
       backgroundHandlerThread.quitSafely();
+      diagLog.info(CameraDiagnosticLogger.LogCategory.THREAD, "[BG_THREAD] quitSafely() called");
+    } else {
+      diagLog.warning(CameraDiagnosticLogger.LogCategory.THREAD, "[BG_THREAD] No thread to stop - already null");
     }
+    
+    diagLog.info(CameraDiagnosticLogger.LogCategory.THREAD, "[BG_THREAD] Nullifying thread references");
     backgroundHandlerThread = null;
     backgroundHandler = null;
+    diagLog.logLifecycle("BG_THREAD_STOP_COMPLETE", "references nullified");
   }
 
   /**
@@ -1013,7 +1043,7 @@ class Camera
         CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
 
     try {
-      captureSession.capture(previewRequestBuilder.build(), null, backgroundHandler);
+      captureSession.capture(previewRequestBuilder.build(), null, getBackgroundHandler());
     } catch (CameraAccessException e) {
       String message =
           (e.getMessage() == null)
@@ -1034,13 +1064,13 @@ class Camera
       // Cancel existing AF state.
       previewRequestBuilder.set(
           CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
-      captureSession.capture(previewRequestBuilder.build(), null, backgroundHandler);
+      captureSession.capture(previewRequestBuilder.build(), null, getBackgroundHandler());
 
       // Set AF state to idle again.
       previewRequestBuilder.set(
           CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
 
-      captureSession.capture(previewRequestBuilder.build(), null, backgroundHandler);
+      captureSession.capture(previewRequestBuilder.build(), null, getBackgroundHandler());
     } catch (CameraAccessException e) {
       String message =
           (e.getMessage() == null)
@@ -1314,7 +1344,7 @@ class Camera
 
           try {
             captureSession.setRepeatingRequest(
-                previewRequestBuilder.build(), null, backgroundHandler);
+                previewRequestBuilder.build(), null, getBackgroundHandler());
           } catch (CameraAccessException e) {
             throw new Messages.FlutterError(
                 "setFocusModeFailed", "Error setting focus mode: " + e.getMessage(), null);
@@ -1613,7 +1643,7 @@ class Camera
               return;
             }
 
-            imageStreamReader.removeListener(backgroundHandler);
+            imageStreamReader.removeListener(getBackgroundHandler());
           }
         });
   }
@@ -1623,15 +1653,21 @@ class Camera
       return;
     }
 
-    imageStreamReader.subscribeListener(this.captureProps, imageStreamSink, backgroundHandler);
+    imageStreamReader.subscribeListener(this.captureProps, imageStreamSink, getBackgroundHandler());
   }
 
   void closeCaptureSession() {
+    diagLog.logLifecycle("SESSION_CLOSE_CALLED", 
+      "captureSession=" + (captureSession != null ? "exists" : "null"));
+    
     if (captureSession != null) {
       Log.i(TAG, "closeCaptureSession");
-
+      diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "[SESSION] Closing session");
       captureSession.close();
       captureSession = null;
+      diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "[SESSION] Session closed and nullified");
+    } else {
+      diagLog.info(CameraDiagnosticLogger.LogCategory.THREAD, "[SESSION] Session already null");
     }
   }
 
@@ -1647,28 +1683,28 @@ class Camera
     if (pictureImageReader != null) {
       pictureImageReader.close();
       pictureImageReader = null;
-      diagLog.info("Picture image reader closed");
+      diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Picture image reader closed");
     }
     if (imageStreamReader != null) {
       imageStreamReader.close();
       imageStreamReader = null;
-      diagLog.info("Image stream reader closed");
+      diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Image stream reader closed");
     }
     if (mediaRecorder != null) {
       mediaRecorder.reset();
       mediaRecorder.release();
       mediaRecorder = null;
-      diagLog.info("Media recorder released");
+      diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Media recorder released");
     }
 
     // NOTE: Background thread is NOT stopped here (moved to dispose() to prevent race conditions)
     // This allows rapid close/initialize cycles without breaking the background handler
     diagLog.logMemory("After close");
-    diagLog.info("close() completed (background thread NOT stopped)");
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "close() completed (background thread NOT stopped)");
   }
 
   private void stopAndReleaseCamera() {
-    diagLog.info("stopAndReleaseCamera() - cameraDevice=" + (cameraDevice != null ? "exists" : "null"));
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "stopAndReleaseCamera() - cameraDevice=" + (cameraDevice != null ? "exists" : "null"));
     
     if (cameraDevice != null) {
       diagLog.logCameraDevice("Closing device", null);
@@ -1755,15 +1791,15 @@ class Camera
 
     close();
     flutterTexture.release();
-    diagLog.info("Flutter texture released");
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Flutter texture released");
     getDeviceOrientationManager().stop();
-    diagLog.info("Device orientation manager stopped");
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "Device orientation manager stopped");
     
     // Stop background thread HERE (not in close()) to prevent race conditions
     stopBackgroundThread();
     
     diagLog.logMemory("After dispose");
-    diagLog.info("dispose() completed");
+    diagLog.info(CameraDiagnosticLogger.LogCategory.CRITICAL, "dispose() completed");
     diagLog.flush(); // Ensure all logs are written before disposal
   }
 
