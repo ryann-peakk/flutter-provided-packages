@@ -281,6 +281,18 @@ class Camera
     }
   }
 
+  /**
+   * Helper method to safely log camera device state for race condition debugging.
+   * Returns camera ID or "null" to prevent NPE during rapid open/close cycles.
+   */
+  private String debugCameraDevice(CameraDevice device) {
+    if (device == null) {
+      return "null";
+    } else {
+      return device.getId();
+    }
+  }
+
   private static <T> boolean equalsNullable(T a, T b) {
     return (a == null) ? (b == null) : a.equals(b);
   }
@@ -962,6 +974,23 @@ class Camera
     }
     backgroundHandlerThread = null;
     backgroundHandler = null;
+  }
+
+  /**
+   * Get background handler with logging for race condition debugging.
+   * Logs warning when handler is null (thread not started or already stopped).
+   * 
+   * @return Handler or null if background thread is stopped
+   */
+  private Handler getBackgroundHandler() {
+    if (backgroundHandler != null) {
+      return backgroundHandler;
+    } else {
+      diagLog.warning(CameraDiagnosticLogger.LogCategory.THREAD,
+          "[BG_THREAD] Handler is NULL - thread not started or already stopped");
+      diagLog.logThread("getBackgroundHandler() returning null");
+      return null;
+    }
   }
 
   /** Start capturing a picture, doing autofocus first. */
