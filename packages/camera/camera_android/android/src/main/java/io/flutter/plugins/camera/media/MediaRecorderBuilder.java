@@ -181,13 +181,18 @@ public class MediaRecorderBuilder {
   private void setVideoEncoderWithFallback(
       MediaRecorder mediaRecorder, @Nullable Integer requestedCodec, int fallbackCodec) {
     if (requestedCodec == null) {
+      android.util.Log.i("CameraPlugin", "🎥 Using default video codec: " + fallbackCodec);
       mediaRecorder.setVideoEncoder(fallbackCodec);
       return;
     }
 
     try {
+      String codecName = (requestedCodec == 5) ? " (HEVC/H.265)" : " (codec " + requestedCodec + ")";
+      android.util.Log.i("CameraPlugin", "🎥 Attempting to set video codec: " + requestedCodec + codecName);
       mediaRecorder.setVideoEncoder(requestedCodec.intValue());
+      android.util.Log.i("CameraPlugin", "🎥 Successfully set video codec: " + requestedCodec + codecName);
     } catch (RuntimeException exception) {
+      android.util.Log.w("CameraPlugin", "🎥 Failed to set codec " + requestedCodec + ", falling back to default codec: " + fallbackCodec + " - Error: " + exception.getMessage());
       mediaRecorder.setVideoEncoder(fallbackCodec);
     }
   }

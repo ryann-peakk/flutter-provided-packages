@@ -1,3 +1,7 @@
+## 2.11.2
+
+* Add outputPath parameter to CameraController for custom video save locations.
+
 ## 2.11.1
 
 * Add optional outputPath parameter to video recording. Videos now default to external storage Movies directory (gallery-visible, auto-deleted with app) instead of cache.
