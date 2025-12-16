@@ -16,8 +16,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -26,19 +32,35 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Thread-safe and designed for long-running sessions.
  */
 public class CameraDiagnosticLogger {
+  
+  /**
+   * Log categories for multi-file logging system.
+   * Separates critical race condition logs from verbose debugging.
+   */
+  public enum LogCategory {
+    CRITICAL("camera_critical"),  // Main lifecycle, device callbacks, sessions, recording
+    THREAD("camera_thread"),      // Background thread + null checks
+    VERBOSE("camera_verbose");    // Preview, capture, memory
+    
+    public final String filePrefix;
+    
+    LogCategory(String filePrefix) {
+      this.filePrefix = filePrefix;
+    }
+  }
   private static final String TAG = "CameraDiagLog";
-  private static final String LOG_FILE_PREFIX = "camera_diagnostics_";
   private static final String LOG_FILE_EXTENSION = ".log";
   private static final int MAX_LOG_SIZE_BYTES = 10 * 1024 * 1024; // 10MB per file
   
   private static CameraDiagnosticLogger instance;
   
   private final Context context;
-  private File logFile;
-  private PrintWriter logWriter;
+  private final Map<LogCategory, File> logFiles = new HashMap<>();
+  private final Map<LogCategory, PrintWriter> logWriters = new HashMap<>();
   private final SimpleDateFormat timestampFormat;
   final AtomicBoolean isInitialized = new AtomicBoolean(false);
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private final AtomicBoolean isRotating = new AtomicBoolean(false);
   
   // Background thread for file I/O
   private HandlerThread logThread;
@@ -84,19 +106,25 @@ public class CameraDiagnosticLogger {
         logsDir.mkdirs();
       }
       
-      // Create new log file
+      // Create log files for each category
       long timestamp = System.currentTimeMillis();
       sessionStartTime = timestamp;
-      String fileName = LOG_FILE_PREFIX + timestamp + LOG_FILE_EXTENSION;
-      logFile = new File(logsDir, fileName);
-      logWriter = new PrintWriter(new FileWriter(logFile, true), true);
+      
+      for (LogCategory category : LogCategory.values()) {
+        String fileName = category.filePrefix + "_" + timestamp + LOG_FILE_EXTENSION;
+        File logFile = new File(logsDir, fileName);
+        PrintWriter logWriter = new PrintWriter(new FileWriter(logFile, true), true);
+        
+        logFiles.put(category, logFile);
+        logWriters.put(category, logWriter);
+      }
       
       isInitialized.set(true);
       
-      // Write session header
+      // Write session header to all files
       writeSessionHeader();
       
-      Log.i(TAG, "Diagnostic logger initialized: " + logFile.getAbsolutePath());
+      Log.i(TAG, "Diagnostic logger initialized with " + logFiles.size() + " files");
       
     } catch (IOException e) {
       Log.e(TAG, "Failed to initialize diagnostic logger", e);
@@ -105,104 +133,161 @@ public class CameraDiagnosticLogger {
   }
   
   /**
-   * Write session header with device info
+   * Write session header with device info to all log files
    */
   private void writeSessionHeader() {
-    writeDirect("=".repeat(80));
-    writeDirect("CAMERA DIAGNOSTIC LOG SESSION");
-    writeDirect("=".repeat(80));
-    writeDirect("Session Start: " + new Date(sessionStartTime));
-    writeDirect("Device: " + Build.MANUFACTURER + " " + Build.MODEL);
-    writeDirect("Android: " + Build.VERSION.RELEASE + " (SDK " + Build.VERSION.SDK_INT + ")");
-    writeDirect("App Process: " + android.os.Process.myPid());
-    writeDirect("Available Memory: " + getAvailableMemoryMB() + " MB");
-    writeDirect("=".repeat(80));
-    writeDirect("");
+    for (LogCategory category : LogCategory.values()) {
+      writeDirect(category, "=".repeat(80));
+      writeDirect(category, "CAMERA DIAGNOSTIC LOG SESSION - " + category.name());
+      writeDirect(category, "=".repeat(80));
+      writeDirect(category, "Session Start: " + new Date(sessionStartTime));
+      writeDirect(category, "Device: " + Build.MANUFACTURER + " " + Build.MODEL);
+      writeDirect(category, "Android: " + Build.VERSION.RELEASE + " (SDK " + Build.VERSION.SDK_INT + ")");
+      writeDirect(category, "App Process: " + android.os.Process.myPid());
+      writeDirect(category, "Available Memory: " + getAvailableMemoryMB() + " MB");
+      writeDirect(category, "=".repeat(80));
+      writeDirect(category, "");
+    }
   }
   
   /**
-   * Log an info message
+   * Log an info message (defaults to CRITICAL category)
    */
   public void info(@NonNull String message) {
-    log("INFO", message, null);
+    info(LogCategory.CRITICAL, message);
   }
   
   /**
-   * Log a debug message
+   * Log an info message to specific category
+   */
+  public void info(@NonNull LogCategory category, @NonNull String message) {
+    if (isRotating.get()) {
+      return; // Skip logging during rotation
+    }
+    log(category, "INFO", message, null);
+  }
+  
+  /**
+   * Log a debug message (defaults to CRITICAL category)
    */
   public void debug(@NonNull String message) {
-    log("DEBUG", message, null);
+    debug(LogCategory.CRITICAL, message);
   }
   
   /**
-   * Log a warning message
+   * Log a debug message to specific category
+   */
+  public void debug(@NonNull LogCategory category, @NonNull String message) {
+    if (isRotating.get()) {
+      return; // Skip logging during rotation
+    }
+    log(category, "DEBUG", message, null);
+  }
+  
+  /**
+   * Log a warning message (defaults to CRITICAL category)
    */
   public void warning(@NonNull String message) {
-    log("WARN", message, null);
+    warning(LogCategory.CRITICAL, message);
   }
   
   /**
-   * Log an error message
+   * Log a warning message to specific category
+   */
+  public void warning(@NonNull LogCategory category, @NonNull String message) {
+    if (isRotating.get()) {
+      return; // Skip logging during rotation
+    }
+    log(category, "WARN", message, null);
+  }
+  
+  /**
+   * Log an error message (defaults to CRITICAL category)
    */
   public void error(@NonNull String message, @Nullable Throwable throwable) {
-    log("ERROR", message, throwable);
+    error(LogCategory.CRITICAL, message, throwable);
   }
   
   /**
-   * Log camera lifecycle event
+   * Log an error message to specific category
+   */
+  public void error(@NonNull LogCategory category, @NonNull String message, @Nullable Throwable throwable) {
+    if (isRotating.get()) {
+      return; // Skip logging during rotation
+    }
+    log(category, "ERROR", message, throwable);
+  }
+  
+  /**
+   * Log camera lifecycle event (routes to CRITICAL category)
    */
   public void logLifecycle(@NonNull String event, @NonNull String details) {
-    log("LIFECYCLE", event + " | " + details, null);
+    if (isRotating.get()) {
+      return; // Skip logging during rotation
+    }
+    log(LogCategory.CRITICAL, "LIFECYCLE", event + " | " + details, null);
   }
   
   /**
-   * Log camera state change
+   * Log camera state change (routes to CRITICAL category)
    */
   public void logStateChange(@NonNull String fromState, @NonNull String toState, @NonNull String reason) {
-    log("STATE", String.format("'%s' -> '%s' | Reason: %s", fromState, toState, reason), null);
+    if (isRotating.get()) {
+      return; // Skip logging during rotation
+    }
+    log(LogCategory.CRITICAL, "STATE", String.format("'%s' -> '%s' | Reason: %s", fromState, toState, reason), null);
   }
   
   /**
-   * Log memory info
+   * Log memory info (routes to VERBOSE category)
    */
   public void logMemory(@NonNull String context) {
+    if (isRotating.get()) {
+      return; // Skip logging during rotation
+    }
     Runtime runtime = Runtime.getRuntime();
     long usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024);
     long maxMemory = runtime.maxMemory() / (1024 * 1024);
-    log("MEMORY", String.format("%s | Used: %dMB / Max: %dMB (%.1f%%)", 
+    log(LogCategory.VERBOSE, "MEMORY", String.format("%s | Used: %dMB / Max: %dMB (%.1f%%)", 
         context, usedMemory, maxMemory, (usedMemory * 100.0 / maxMemory)), null);
   }
   
   /**
-   * Log thread info
+   * Log thread info (routes to THREAD category)
    */
   public void logThread(@NonNull String operation) {
+    if (isRotating.get()) {
+      return; // Skip logging during rotation
+    }
     Thread thread = Thread.currentThread();
-    log("THREAD", String.format("%s | Thread: %s (ID: %d)", 
+    log(LogCategory.THREAD, "THREAD", String.format("%s | Thread: %s (ID: %d)", 
         operation, thread.getName(), thread.getId()), null);
   }
   
   /**
-   * Log camera device info
+   * Log camera device info (routes to CRITICAL category)
    */
   public void logCameraDevice(@NonNull String operation, @Nullable String cameraId) {
+    if (isRotating.get()) {
+      return; // Skip logging during rotation
+    }
     if (cameraId != null) {
-      log("CAMERA_DEVICE", operation + " | CameraID: " + cameraId, null);
+      log(LogCategory.CRITICAL, "CAMERA_DEVICE", operation + " | CameraID: " + cameraId, null);
     } else {
-      log("CAMERA_DEVICE", operation + " | CameraID: null", null);
+      log(LogCategory.CRITICAL, "CAMERA_DEVICE", operation + " | CameraID: null", null);
     }
   }
   
   /**
    * Core logging method
    */
-  private void log(@NonNull String level, @NonNull String message, @Nullable Throwable throwable) {
-    if (!isInitialized.get() || isClosed.get()) {
+  private void log(@NonNull LogCategory category, @NonNull String level, @NonNull String message, @Nullable Throwable throwable) {
+    if (isRotating.get() || !isInitialized.get() || isClosed.get()) {
       // Fall back to Android log
       if (throwable != null) {
-        Log.e(TAG, "[" + level + "] " + message, throwable);
+        Log.e(TAG, "[" + category.name() + "] [" + level + "] " + message, throwable);
       } else {
-        Log.i(TAG, "[" + level + "] " + message);
+        Log.i(TAG, "[" + category.name() + "] [" + level + "] " + message);
       }
       return;
     }
@@ -213,20 +298,21 @@ public class CameraDiagnosticLogger {
         String timestamp = timestampFormat.format(new Date());
         String logEntry = String.format("[%s] [%s] %s", timestamp, level, message);
         
-        writeDirect(logEntry);
+        writeDirect(category, logEntry);
         
         if (throwable != null) {
-          writeDirect("Exception: " + throwable.getClass().getName() + ": " + throwable.getMessage());
+          writeDirect(category, "Exception: " + throwable.getClass().getName() + ": " + throwable.getMessage());
           for (StackTraceElement element : throwable.getStackTrace()) {
-            writeDirect("  at " + element.toString());
+            writeDirect(category, "  at " + element.toString());
           }
         }
         
         logEntryCount++;
         
-        // Check if we need to rotate log file
-        if (logFile.length() > MAX_LOG_SIZE_BYTES) {
-          rotateLogFile();
+        // Check if we need to rotate log file for this category
+        File categoryLogFile = logFiles.get(category);
+        if (categoryLogFile != null && categoryLogFile.length() > MAX_LOG_SIZE_BYTES) {
+          rotateLogFile(category);
         }
         
       } catch (Exception e) {
@@ -238,46 +324,51 @@ public class CameraDiagnosticLogger {
   /**
    * Write directly to file (must be called from background thread)
    */
-  private synchronized void writeDirect(@NonNull String line) {
-    if (logWriter != null && !isClosed.get()) {
-      logWriter.println(line);
-      logWriter.flush();
+  private synchronized void writeDirect(@NonNull LogCategory category, @NonNull String line) {
+    PrintWriter writer = logWriters.get(category);
+    if (writer != null && !isClosed.get()) {
+      writer.println(line);
+      writer.flush();
     }
   }
   
   /**
-   * Rotate log file when it gets too large
+   * Rotate log file when it gets too large (per category)
    */
-  private synchronized void rotateLogFile() {
+  private synchronized void rotateLogFile(@NonNull LogCategory category) {
     try {
-      writeDirect("");
-      writeDirect("=".repeat(80));
-      writeDirect("LOG FILE ROTATION - Size limit reached");
-      writeDirect("Total entries in this file: " + logEntryCount);
-      writeDirect("=".repeat(80));
+      writeDirect(category, "");
+      writeDirect(category, "=".repeat(80));
+      writeDirect(category, "LOG FILE ROTATION - Size limit reached");
+      writeDirect(category, "Total entries in this file: " + logEntryCount);
+      writeDirect(category, "=".repeat(80));
       
-      if (logWriter != null) {
-        logWriter.close();
+      PrintWriter writer = logWriters.get(category);
+      if (writer != null) {
+        writer.close();
       }
       
-      // Create new log file
+      // Create new log file for this category
       long timestamp = System.currentTimeMillis();
-      File logsDir = logFile.getParentFile();
-      String fileName = LOG_FILE_PREFIX + timestamp + LOG_FILE_EXTENSION;
-      logFile = new File(logsDir, fileName);
-      logWriter = new PrintWriter(new FileWriter(logFile, true), true);
-      logEntryCount = 0;
+      File oldFile = logFiles.get(category);
+      File logsDir = oldFile != null ? oldFile.getParentFile() : new File(context.getExternalFilesDir(null), "logs");
+      String fileName = category.filePrefix + "_" + timestamp + LOG_FILE_EXTENSION;
+      File newLogFile = new File(logsDir, fileName);
+      PrintWriter newWriter = new PrintWriter(new FileWriter(newLogFile, true), true);
       
-      writeDirect("=".repeat(80));
-      writeDirect("ROTATED LOG FILE - Continuing session");
-      writeDirect("New file: " + logFile.getName());
-      writeDirect("=".repeat(80));
-      writeDirect("");
+      logFiles.put(category, newLogFile);
+      logWriters.put(category, newWriter);
       
-      Log.i(TAG, "Rotated to new log file: " + logFile.getAbsolutePath());
+      writeDirect(category, "=".repeat(80));
+      writeDirect(category, "ROTATED LOG FILE - Continuing session");
+      writeDirect(category, "New file: " + newLogFile.getName());
+      writeDirect(category, "=".repeat(80));
+      writeDirect(category, "");
+      
+      Log.i(TAG, "Rotated " + category.name() + " log file: " + newLogFile.getAbsolutePath());
       
     } catch (IOException e) {
-      Log.e(TAG, "Failed to rotate log file", e);
+      Log.e(TAG, "Failed to rotate log file for category " + category.name(), e);
     }
   }
   
@@ -290,20 +381,22 @@ public class CameraDiagnosticLogger {
   }
   
   /**
-   * Flush logs to disk
+   * Flush logs to disk (all categories)
    */
   public void flush() {
     if (logHandler != null) {
       logHandler.post(() -> {
-        if (logWriter != null) {
-          logWriter.flush();
+        for (PrintWriter writer : logWriters.values()) {
+          if (writer != null) {
+            writer.flush();
+          }
         }
       });
     }
   }
   
   /**
-   * Close the logger
+   * Close the logger (all categories)
    */
   public synchronized void close() {
     if (isClosed.get()) {
@@ -315,18 +408,24 @@ public class CameraDiagnosticLogger {
     if (logHandler != null) {
       logHandler.post(() -> {
         try {
-          if (logWriter != null) {
-            writeDirect("");
-            writeDirect("=".repeat(80));
-            writeDirect("SESSION END");
-            writeDirect("Session Duration: " + ((System.currentTimeMillis() - sessionStartTime) / 1000) + " seconds");
-            writeDirect("Total Log Entries: " + logEntryCount);
-            writeDirect("=".repeat(80));
-            
-            logWriter.flush();
-            logWriter.close();
-            logWriter = null;
+          // Write session end to all files
+          for (LogCategory category : LogCategory.values()) {
+            PrintWriter writer = logWriters.get(category);
+            if (writer != null) {
+              writeDirect(category, "");
+              writeDirect(category, "=".repeat(80));
+              writeDirect(category, "SESSION END");
+              writeDirect(category, "Session Duration: " + ((System.currentTimeMillis() - sessionStartTime) / 1000) + " seconds");
+              writeDirect(category, "Total Log Entries: " + logEntryCount);
+              writeDirect(category, "=".repeat(80));
+              
+              writer.flush();
+              writer.close();
+            }
           }
+          
+          logWriters.clear();
+          logFiles.clear();
           
           if (logThread != null) {
             logThread.quitSafely();
@@ -345,11 +444,150 @@ public class CameraDiagnosticLogger {
   }
   
   /**
-   * Get current log file path
+   * Get current log file path (deprecated - use getAllLogFilePaths)
    */
   @Nullable
+  @Deprecated
   public String getLogFilePath() {
-    return logFile != null ? logFile.getAbsolutePath() : null;
+    File criticalFile = logFiles.get(LogCategory.CRITICAL);
+    return criticalFile != null ? criticalFile.getAbsolutePath() : null;
+  }
+  
+  /**
+   * Rotate camera log files (close current files, prepare for upload).
+   * Called by Flutter before log upload.
+   * 
+   * CRITICAL: Sets isRotating flag to block all log writes during rotation.
+   * This prevents corrupted/incomplete log files during upload.
+   * 
+   * @return List of log file paths that were rotated
+   */
+  public synchronized List<String> rotateLogFilesForUpload() {
+    // Prevent double rotation
+    if (isRotating.get()) {
+      Log.w(TAG, "Log rotation already in progress, skipping");
+      return new ArrayList<>();
+    }
+    
+    if (isClosed.get()) {
+      return new ArrayList<>();
+    }
+    
+    // Block all log writes during rotation
+    isRotating.set(true);
+    
+    List<String> rotatedPaths = new ArrayList<>();
+    
+    try {
+      if (logHandler != null) {
+        // Post to background thread to ensure all pending logs are written
+        final CountDownLatch latch = new CountDownLatch(1);
+        final List<String> paths = new ArrayList<>();
+        
+        logHandler.post(() -> {
+          try {
+            for (LogCategory category : LogCategory.values()) {
+              PrintWriter writer = logWriters.get(category);
+              File file = logFiles.get(category);
+              
+              if (writer != null && file != null) {
+                // Write rotation marker directly (bypasses isRotating check)
+                writer.println("");
+                writer.println("=".repeat(80));
+                writer.println("LOG ROTATION FOR UPLOAD - " + new Date());
+                writer.println("=".repeat(80));
+                
+                writer.flush();
+                writer.close();
+                paths.add(file.getAbsolutePath());
+              }
+            }
+            
+            // Clear references (will be recreated on next log call)
+            logWriters.clear();
+            logFiles.clear();
+            isInitialized.set(false);
+            
+            Log.i(TAG, "Rotated " + paths.size() + " camera log files for upload");
+            
+          } catch (Exception e) {
+            Log.e(TAG, "Failed to rotate camera log files", e);
+          } finally {
+            latch.countDown();
+          }
+        });
+        
+        // Wait for rotation to complete (max 2 seconds)
+        try {
+          latch.await(2, TimeUnit.SECONDS);
+          rotatedPaths.addAll(paths);
+        } catch (InterruptedException e) {
+          Log.e(TAG, "Timeout waiting for log rotation", e);
+        }
+      }
+      
+      return rotatedPaths;
+      
+    } finally {
+      // Always allow logging again
+      isRotating.set(false);
+    }
+  }
+  
+  /**
+   * Get all camera log file paths (for discovery).
+   * 
+   * @return List of all camera log file paths
+   */
+  public List<String> getAllLogFilePaths() {
+    File logsDir = new File(context.getExternalFilesDir(null), "logs");
+    if (!logsDir.exists()) {
+      return new ArrayList<>();
+    }
+    
+    List<String> paths = new ArrayList<>();
+    File[] files = logsDir.listFiles((dir, name) -> 
+      name.startsWith("camera_") && name.endsWith(".log"));
+    
+    if (files != null) {
+      for (File file : files) {
+        paths.add(file.getAbsolutePath());
+      }
+    }
+    
+    return paths;
+  }
+  
+  /**
+   * Delete old camera log files (cleanup).
+   * 
+   * @param olderThanDays Delete files older than this many days
+   * @return Number of files deleted
+   */
+  public int deleteOldLogs(int olderThanDays) {
+    File logsDir = new File(context.getExternalFilesDir(null), "logs");
+    if (!logsDir.exists()) {
+      return 0;
+    }
+    
+    long cutoffTime = System.currentTimeMillis() - (olderThanDays * 24L * 60 * 60 * 1000);
+    int deletedCount = 0;
+    
+    File[] files = logsDir.listFiles((dir, name) -> 
+      name.startsWith("camera_") && name.endsWith(".log"));
+    
+    if (files != null) {
+      for (File file : files) {
+        if (file.lastModified() < cutoffTime) {
+          if (file.delete()) {
+            deletedCount++;
+          }
+        }
+      }
+    }
+    
+    Log.i(TAG, "Deleted " + deletedCount + " old camera log files");
+    return deletedCount;
   }
 }
 
