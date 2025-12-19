@@ -50,7 +50,9 @@ public class CameraDiagnosticLogger {
   }
   private static final String TAG = "CameraDiagLog";
   private static final String LOG_FILE_EXTENSION = ".log";
-  private static final int MAX_LOG_SIZE_BYTES = 10 * 1024 * 1024; // 10MB per file
+  private static final int MAX_LOG_SIZE_BYTES = 5 * 1024 * 1024; // 5MB per file
+  private static final long MAX_TOTAL_LOG_SIZE_BYTES = 50 * 1024 * 1024; // 50MB total
+  private static final long MIN_FILE_AGE_DAYS = 5; // Never delete files younger than 5 days
   
   private static CameraDiagnosticLogger instance;
   
@@ -61,6 +63,7 @@ public class CameraDiagnosticLogger {
   final AtomicBoolean isInitialized = new AtomicBoolean(false);
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final AtomicBoolean isRotating = new AtomicBoolean(false);
+  private final static String LOG_DIRECTORY_NAME = "camera_logs";
   
   // Background thread for file I/O
   private HandlerThread logThread;
@@ -101,10 +104,16 @@ public class CameraDiagnosticLogger {
       logHandler = new Handler(logThread.getLooper());
       
       // Create log directory
-      File logsDir = new File(context.getExternalFilesDir(null), "logs");
+      File logsDir = new File(context.getExternalFilesDir(null), LOG_DIRECTORY_NAME);
       if (!logsDir.exists()) {
         logsDir.mkdirs();
       }
+      
+      // Run cleanup before creating new log files
+      Log.i(TAG, "Running camera log cleanup on initialization...");
+      int ageDeletedCount = deleteOldLogs(14);
+      int sizeDeletedCount = enforceMaxTotalSize();
+      Log.i(TAG, "Cleanup complete: " + (ageDeletedCount + sizeDeletedCount) + " files deleted total");
       
       // Create log files for each category
       long timestamp = System.currentTimeMillis();
@@ -351,7 +360,7 @@ public class CameraDiagnosticLogger {
       // Create new log file for this category
       long timestamp = System.currentTimeMillis();
       File oldFile = logFiles.get(category);
-      File logsDir = oldFile != null ? oldFile.getParentFile() : new File(context.getExternalFilesDir(null), "logs");
+      File logsDir = oldFile != null ? oldFile.getParentFile() : new File(context.getExternalFilesDir(null), LOG_DIRECTORY_NAME);
       String fileName = category.filePrefix + "_" + timestamp + LOG_FILE_EXTENSION;
       File newLogFile = new File(logsDir, fileName);
       PrintWriter newWriter = new PrintWriter(new FileWriter(newLogFile, true), true);
@@ -540,7 +549,7 @@ public class CameraDiagnosticLogger {
    * @return List of all camera log file paths
    */
   public List<String> getAllLogFilePaths() {
-    File logsDir = new File(context.getExternalFilesDir(null), "logs");
+    File logsDir = new File(context.getExternalFilesDir(null), LOG_DIRECTORY_NAME);
     if (!logsDir.exists()) {
       return new ArrayList<>();
     }
@@ -565,13 +574,16 @@ public class CameraDiagnosticLogger {
    * @return Number of files deleted
    */
   public int deleteOldLogs(int olderThanDays) {
-    File logsDir = new File(context.getExternalFilesDir(null), "logs");
+    File logsDir = new File(context.getExternalFilesDir(null), LOG_DIRECTORY_NAME);
     if (!logsDir.exists()) {
       return 0;
     }
     
-    long cutoffTime = System.currentTimeMillis() - (olderThanDays * 24L * 60 * 60 * 1000);
+    // Enforce minimum age: never delete files less than MIN_FILE_AGE_DAYS old
+    int effectiveDays = Math.max(olderThanDays, (int) MIN_FILE_AGE_DAYS);
+    long cutoffTime = System.currentTimeMillis() - (effectiveDays * 24L * 60 * 60 * 1000);
     int deletedCount = 0;
+    int protectedCount = 0;
     
     File[] files = logsDir.listFiles((dir, name) -> 
       name.startsWith("camera_") && name.endsWith(".log"));
@@ -582,12 +594,83 @@ public class CameraDiagnosticLogger {
           if (file.delete()) {
             deletedCount++;
           }
+        } else if (olderThanDays < MIN_FILE_AGE_DAYS) {
+          // Count files that were protected by the MIN_FILE_AGE_DAYS rule
+          protectedCount++;
         }
       }
     }
     
-    Log.i(TAG, "Deleted " + deletedCount + " old camera log files");
+    if (protectedCount > 0) {
+      Log.i(TAG, "Protected " + protectedCount + " camera log files (less than " + MIN_FILE_AGE_DAYS + " days old)");
+    }
+    Log.i(TAG, "Deleted " + deletedCount + " old camera log files (older than " + effectiveDays + " days)");
+    return deletedCount;
+  }
+  
+  /**
+   * Enforce maximum total size limit across all camera log files.
+   * Deletes oldest files (by modification time) until total size is under MAX_TOTAL_LOG_SIZE_BYTES.
+   * Never deletes files less than MIN_FILE_AGE_DAYS old.
+   * 
+   * @return Number of files deleted
+   */
+  public int enforceMaxTotalSize() {
+    File logsDir = new File(context.getExternalFilesDir(null), LOG_DIRECTORY_NAME);
+    if (!logsDir.exists()) {
+      return 0;
+    }
+    
+    File[] files = logsDir.listFiles((dir, name) -> 
+      name.startsWith("camera_") && name.endsWith(".log"));
+    
+    if (files == null || files.length == 0) {
+      return 0;
+    }
+    
+    // Calculate total size
+    long totalSize = 0;
+    for (File file : files) {
+      totalSize += file.length();
+    }
+    
+    // If under limit, nothing to do
+    if (totalSize <= MAX_TOTAL_LOG_SIZE_BYTES) {
+      Log.i(TAG, "Camera logs total size: " + (totalSize / 1024 / 1024) + " MB (under " + (MAX_TOTAL_LOG_SIZE_BYTES / 1024 / 1024) + " MB limit)");
+      return 0;
+    }
+    
+    // Sort files by last modified time (oldest first)
+    java.util.Arrays.sort(files, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
+    
+    long minFileAge = System.currentTimeMillis() - (MIN_FILE_AGE_DAYS * 24L * 60 * 60 * 1000);
+    int deletedCount = 0;
+    long deletedBytes = 0;
+    
+    // Delete oldest files until we're under the limit
+    for (File file : files) {
+      if (totalSize <= MAX_TOTAL_LOG_SIZE_BYTES) {
+        break; // We've freed enough space
+      }
+      
+      // Never delete files less than MIN_FILE_AGE_DAYS old
+      if (file.lastModified() >= minFileAge) {
+        continue;
+      }
+      
+      long fileSize = file.length();
+      if (file.delete()) {
+        totalSize -= fileSize;
+        deletedBytes += fileSize;
+        deletedCount++;
+      }
+    }
+    
+    Log.i(TAG, "Enforced max total size: deleted " + deletedCount + " files (" + 
+          (deletedBytes / 1024 / 1024) + " MB), new total: " + (totalSize / 1024 / 1024) + " MB");
+    
     return deletedCount;
   }
 }
+
 
